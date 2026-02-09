@@ -46,9 +46,9 @@ function App() {
 
   return (
     <>
-      <Navbar />
+      <Navbar onHome={handleBack} />
       {project ? (
-        <Playground project={project} onBack={handleBack} />
+        <Playground project={project} />
       ) : (
         <Home onStart={handleStart} loading={loading} error={error} />
       )}

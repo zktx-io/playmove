@@ -13,6 +13,7 @@ import {
   useCurrentAccount,
   useSignAndExecuteTransaction,
   useSuiClient,
+  useSuiClientContext,
 } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { fromBase64 } from '@mysten/sui/utils';
@@ -108,12 +109,11 @@ function renderAnsi(text: string, colorMap: AnsiColorMap): React.ReactNode[] {
 
 interface PlaygroundProps {
   project: Project;
-  onBack: () => void;
 }
 
-/* ── Component ───────────────────────────────────────── */
+/* ── Component ─────────────────────────────────────── */
 
-export function Playground({ project, onBack }: PlaygroundProps) {
+export function Playground({ project }: PlaygroundProps) {
   // File state — convert ProjectFile[] to Record<path, content>
   const [files, setFiles] = useState<Record<string, string>>(() =>
     Object.fromEntries(project.files.map((f) => [f.path, f.content])),
@@ -147,6 +147,14 @@ export function Playground({ project, onBack }: PlaygroundProps) {
   const suiClient = useSuiClient();
   const { mutate: signAndExecute, isPending: isPublishing } =
     useSignAndExecuteTransaction();
+  const { network, selectNetwork } = useSuiClientContext();
+
+  const explorerBase =
+    network === 'mainnet'
+      ? 'https://suiscan.xyz/mainnet'
+      : network === 'devnet'
+        ? 'https://suiscan.xyz/devnet'
+        : 'https://suiscan.xyz/testnet';
 
   /* ── CodeMirror theme (dark, matches playmove) ─────── */
 
@@ -255,7 +263,7 @@ export function Playground({ project, onBack }: PlaygroundProps) {
       const resolved = await resolveDependencies({
         files,
         ansiColor: true,
-        network: 'testnet',
+        network: network as 'testnet' | 'mainnet',
       });
 
       const sourceFiles = Object.fromEntries(
@@ -270,7 +278,7 @@ export function Playground({ project, onBack }: PlaygroundProps) {
         resolvedDependencies: resolved,
         silenceWarnings: false,
         ansiColor: true,
-        network: 'testnet',
+        network: network as 'testnet' | 'mainnet',
         onProgress: (ev) => {
           switch (ev.type) {
             case 'resolve_dep':
@@ -437,7 +445,7 @@ export function Playground({ project, onBack }: PlaygroundProps) {
                 <span className="playground__deploy-label">Package ID</span>
                 <code className="playground__deploy-value">{packageId}</code>
                 <a
-                  href={`https://suiscan.xyz/testnet/object/${packageId}`}
+                  href={`${explorerBase}/object/${packageId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="playground__deploy-link"
@@ -451,7 +459,7 @@ export function Playground({ project, onBack }: PlaygroundProps) {
                 <span className="playground__deploy-label">Digest</span>
                 <code className="playground__deploy-value">{txDigest}</code>
                 <a
-                  href={`https://suiscan.xyz/testnet/tx/${txDigest}`}
+                  href={`${explorerBase}/tx/${txDigest}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="playground__deploy-link"
@@ -467,12 +475,6 @@ export function Playground({ project, onBack }: PlaygroundProps) {
       {/* Action bar */}
       <div className="playground__actions">
         <button
-          className="playground__btn playground__btn--back"
-          onClick={onBack}
-        >
-          ← Back
-        </button>
-        <button
           className="playground__btn playground__btn--toggle"
           onClick={() => setShowLogs((v) => !v)}
           title={showLogs ? 'Hide console' : 'Show console'}
@@ -480,6 +482,19 @@ export function Playground({ project, onBack }: PlaygroundProps) {
           <img src="/terminal.svg" alt="" className="playground__btn-icon" />
         </button>
         <div className="playground__spacer" />
+        <select
+          className="playground__network-select"
+          value={network}
+          onChange={(e) => {
+            selectNetwork(e.target.value);
+            localStorage.setItem('playmove_network', e.target.value);
+          }}
+          disabled={busy}
+        >
+          <option value="devnet">Devnet</option>
+          <option value="testnet">Testnet</option>
+          <option value="mainnet">Mainnet</option>
+        </select>
         <button
           className="playground__btn playground__btn--build"
           onClick={onBuild}

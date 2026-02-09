@@ -12,6 +12,15 @@
   z-index: 100;
 }
 
+.navbar__home-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
 .navbar__logo {
   height: 36px;
   display: block;

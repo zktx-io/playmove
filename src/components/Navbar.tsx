@@ -10,7 +10,11 @@ function formatAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function Navbar() {
+interface NavbarProps {
+  onHome?: () => void;
+}
+
+export function Navbar({ onHome }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const account = useCurrentAccount();
   const { mutate: disconnect, isPending } = useDisconnectWallet();
@@ -22,9 +26,13 @@ export function Navbar() {
 
   return (
     <nav className="navbar">
-      <a href="/">
+      <button
+        type="button"
+        className="navbar__home-btn"
+        onClick={onHome}
+      >
         <img src="/navbar.png" alt="PlayMove" className="navbar__logo" />
-      </a>
+      </button>
 
       <div className="navbar__right">
         {account && (

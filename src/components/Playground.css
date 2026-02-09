@@ -250,12 +250,6 @@
   color: #fff;
 }
 
-.playground__btn--back {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
 .playground__btn--toggle {
   background: transparent;
   border: 1px solid var(--border-color);
@@ -276,4 +270,27 @@
 
 .playground__spacer {
   flex: 1;
+}
+
+/* ── Network selector ── */
+.playground__network-select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.playground__network-select:hover {
+  border-color: var(--accent);
+}
+
+.playground__network-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
