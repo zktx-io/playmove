@@ -12,6 +12,9 @@ If you feel a change will make the product look like a “serious IDE”, **don�
 - **Toy / Playground vibe** > IDE vibe
 - “Try fast, break fast, learn fast”
 - Minimal UI, minimal concepts, minimal setup
+- **Target audience**: Move beginners — a playground to taste smart contracts
+- Choose from a variety of Move contract **templates** to get started instantly
+- **Import Move projects from GitHub** supported
 
 Tagline direction:
 - Build, Deploy & Play
@@ -111,5 +114,18 @@ Ask yourself:
 - Build logs + result badge
 - Deploy + show packageId/digest + link out
 - Optional: verify/repro build (only if it stays “toy-like”)
+
+---
+## App flow (screens)
+
+1. **Home screen** — welcome page explaining the playground
+   - Two cards: "Import from GitHub" (URL input) and "Start from Template" (template buttons)
+   - Selecting a template or entering a GitHub URL loads the project
+2. **Playground screen** — single-screen editor + actions
+   - File tabs/chips at top (2–5 files, no file tree)
+   - CodeMirror editor for light editing
+   - Action bar at bottom: `← Back`, `▶ Build`, `🚀 Deploy`
+   - Result card with badge (✅/❌) + collapsible details
+   - Build result shows logs; Deploy result shows packageId, digest, explorer link
 
 ---

@@ -1,0 +1,135 @@
+.playground {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── File tabs ── */
+.playground__tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+.playground__tab {
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: monospace;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.playground__tab:hover {
+  background: var(--bg-primary);
+}
+
+.playground__tab--active {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border-color: var(--border-color);
+}
+
+/* ── Editor area ── */
+.playground__editor {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ── Action bar ── */
+.playground__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.playground__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.playground__btn:hover {
+  opacity: 0.85;
+}
+
+.playground__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playground__btn--build {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.playground__btn--deploy {
+  background: var(--accent);
+  color: #fff;
+}
+
+.playground__btn--back {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.playground__spacer {
+  flex: 1;
+}
+
+/* ── Result card ── */
+.playground__result {
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.playground__result-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.playground__result-badge--success {
+  color: #2ecc71;
+}
+
+.playground__result-badge--error {
+  color: #e74c3c;
+}
+
+.playground__result-details {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 160px;
+  overflow-y: auto;
+}

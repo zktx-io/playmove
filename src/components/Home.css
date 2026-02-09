@@ -1,0 +1,337 @@
+.home {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 2.5rem;
+}
+
+/* ── Hero ── */
+.home__hero {
+  text-align: center;
+  max-width: 520px;
+}
+
+.home__hero-img {
+  max-width: 400px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 1.25rem;
+}
+
+.home__title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.home__subtitle {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+/* ── GitHub import — full width row ── */
+/* ── GitHub import card ── */
+.home__github {
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.home__github-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.home__github-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.home__github-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.home__github-input:focus {
+  border-color: var(--accent);
+}
+
+.home__github-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.home__github-btn:hover {
+  opacity: 0.85;
+}
+
+.home__github-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── GitHub token ── */
+.home__token-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.home__token-toggle:hover,
+.home__token-toggle.active {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.home__token-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.home__token-panel {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.home__token-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.home__token-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+
+.home__token-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.home__token-btn {
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.2s;
+}
+
+.home__token-btn:hover {
+  border-color: var(--accent);
+}
+
+.home__token-btn--clear {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+}
+
+.home__token-btn--clear:hover {
+  border-color: #f87171;
+}
+
+.home__token-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+.home__token-create {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.65rem;
+  transition: border-color 0.2s;
+}
+
+.home__token-create:hover {
+  border-color: var(--accent);
+}
+
+.home__token-hint {
+  margin-top: 0.35rem;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  text-align: right;
+}
+
+/* ── Template section ── */
+.home__section {
+  width: 100%;
+  max-width: 680px;
+}
+
+.home__section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.home__section-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.home__section-icon[src$=".svg"] {
+  filter: brightness(0) invert(1);
+}
+
+.home__section-icon[src="/sui.svg"] {
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.home__section-link {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.home__section-link:hover {
+  opacity: 1;
+}
+
+/* ── Template tiles grid ── */
+.home__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.home__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.25rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.home__tile:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.home__tile-emoji {
+  font-size: 1.75rem;
+}
+
+.home__tile-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.home__tile-desc {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .home {
+    padding: 1.25rem 1rem;
+    gap: 1.5rem;
+    justify-content: flex-start;
+  }
+
+  .home__hero-img {
+    max-width: 240px;
+  }
+
+  .home__subtitle {
+    font-size: 0.9rem;
+  }
+
+  .home__github {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .home__github-label {
+    text-align: center;
+  }
+
+  .home__tiles {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .home__tile {
+    padding: 1rem 0.5rem;
+  }
+}
