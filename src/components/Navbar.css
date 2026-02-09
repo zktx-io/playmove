@@ -1,0 +1,60 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 64px;
+  background-color: var(--bg-navbar);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar__logo {
+  height: 36px;
+  display: block;
+}
+
+.navbar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.navbar__address {
+  font-family: monospace;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.navbar__auth-btn {
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.navbar__auth-btn:hover {
+  background-color: var(--bg-secondary);
+}
+
+.navbar__auth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.navbar__auth-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-primary);
+}
