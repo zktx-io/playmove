@@ -10,7 +10,7 @@ Load Move projects from GitHub or start from a template, make quick edits, compi
 
 **Build, Deploy & Play**
 
-https://github.com/zktx-io/playmove/blob/main/playmove.mp4
+<video src="https://docs.zktx.io/movie/playmove.mp4" controls width="100%"></video>
 
 ## Features
 
