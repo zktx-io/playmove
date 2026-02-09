@@ -4,9 +4,13 @@
 
 # PlayMove
 
-A playground for Move — pick a template or import from GitHub, build and deploy to Sui in seconds.
+A lightweight, web-based Move playground for Sui.
+
+Load Move projects from GitHub or start from a template, make quick edits, compile in the browser with a WASM-based compiler, and deploy contracts on-chain — all without any local setup.
 
 **Build, Deploy & Play**
+
+https://github.com/zktx-io/playmove/playmove.mp4
 
 ## Features
 
@@ -15,6 +19,7 @@ A playground for Move — pick a template or import from GitHub, build and deplo
 - CodeMirror editor with syntax highlighting
 - WASM-based Move compiler (no backend needed)
 - Deploy to Sui via wallet (devnet / testnet / mainnet)
+- No local toolchain required
 - Dark theme, mobile-friendly
 
 ## How to Use
