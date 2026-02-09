@@ -23,19 +23,19 @@ A playground for Move — pick a template or import from GitHub, build and deplo
 
 Choose from 28 built-in Move templates, or paste a GitHub URL to import your own project.
 
-![Welcome](Screenshot_0.png)
+![Welcome](public/screenshot_00.png)
 
 ### 2. Edit in the playground
 
 Browse files in the sidebar, edit code with syntax highlighting.
 
-![Playground](Screenshot_1.png)
+![Playground](public/screenshot_01.png)
 
 ### 3. Build & Deploy
 
 Hit **▶ Build** to compile with the WASM Move compiler. Connect your wallet and click **🚀 Deploy** to publish on-chain.
 
-![Build](Screenshot_2.png)
+![Build](public/screenshot_02.png)
 
 ## Tips
 
