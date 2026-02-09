@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Navbar } from "./components/Navbar";
-import { Home } from "./components/Home";
-import { Playground } from "./components/Playground";
-import { getTemplate } from "./templates";
-import type { Project, ProjectSource, ProjectFile } from "./types";
-import "./App.css";
+import { useState } from 'react';
+import { Navbar } from './components/Navbar';
+import { Home } from './components/Home';
+import { Playground } from './components/Playground';
+import { getTemplate } from './templates';
+import type { Project, ProjectSource, ProjectFile } from './types';
+import './App.css';
 
 /** Convert a FileMap (Record<string,string>) to ProjectFile[] */
 function toProjectFiles(fileMap: Record<string, string>): ProjectFile[] {
@@ -15,7 +15,7 @@ function App() {
   const [project, setProject] = useState<Project | null>(null);
 
   const handleStart = (source: ProjectSource) => {
-    if (source.type === "template") {
+    if (source.type === 'template') {
       const tpl = getTemplate(source.templateId);
       const fileMap = tpl.files(tpl.defaultName);
       setProject({ source, files: toProjectFiles(fileMap) });
@@ -25,7 +25,7 @@ function App() {
         source,
         files: [
           {
-            path: "README.md",
+            path: 'README.md',
             content: `# GitHub Import\n\nLoading from: ${source.url}\n\n> GitHub import is not yet implemented.`,
           },
         ],

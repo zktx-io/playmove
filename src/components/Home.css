@@ -105,7 +105,9 @@
   font-size: 1rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 
 .home__token-toggle:hover,
@@ -237,11 +239,11 @@
   flex-shrink: 0;
 }
 
-.home__section-icon[src$=".svg"] {
+.home__section-icon[src$='.svg'] {
   filter: brightness(0) invert(1);
 }
 
-.home__section-icon[src="/sui.svg"] {
+.home__section-icon[src='/sui.svg'] {
   width: 20px;
   height: 20px;
   padding: 2px;
@@ -279,7 +281,9 @@
   color: var(--text-primary);
   cursor: pointer;
   text-align: center;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .home__tile:hover {

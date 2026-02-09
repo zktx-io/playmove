@@ -46,4 +46,3 @@ You can build and deploy in two ways:
 /** Append the common tail to any README body. */
 export const withCommon = (readme: string) =>
   `${readme.trim()}\n\n${COMMON_README_TAIL}`;
-

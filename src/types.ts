@@ -1,7 +1,7 @@
 /** How the user chose to start a project */
 export type ProjectSource =
-  | { type: "template"; templateId: string }
-  | { type: "github"; url: string };
+  | { type: 'template'; templateId: string }
+  | { type: 'github'; url: string };
 
 /** A single file in the project */
 export interface ProjectFile {

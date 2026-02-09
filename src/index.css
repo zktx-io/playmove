@@ -8,7 +8,11 @@
   --border-color: #1e1e2e;
   --accent: #4da2ff;
 
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   line-height: 1.6;
   font-weight: 400;
   color: var(--text-primary);

@@ -1,28 +1,28 @@
-import { useState } from "react";
-import { TEMPLATES_INTRO, TEMPLATES_MYSTEN } from "../templates";
-import type { ProjectSource } from "../types";
-import "./Home.css";
+import { useState } from 'react';
+import { TEMPLATES_INTRO, TEMPLATES_MYSTEN } from '../templates';
+import type { ProjectSource } from '../types';
+import './Home.css';
 
-const GH_TOKEN_KEY = "gh_token";
+const GH_TOKEN_KEY = 'gh_token';
 const GH_TOKEN_CREATE_URL =
-  "https://github.com/settings/tokens/new?scopes=repo&description=PlayMove";
+  'https://github.com/settings/tokens/new?scopes=repo&description=PlayMove';
 
 interface HomeProps {
   onStart: (source: ProjectSource) => void;
 }
 
 export function Home({ onStart }: HomeProps) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
   const [token, setToken] = useState(
-    () => localStorage.getItem(GH_TOKEN_KEY) ?? ""
+    () => localStorage.getItem(GH_TOKEN_KEY) ?? '',
   );
 
   const handleGitHub = () => {
     const trimmed = url.trim();
     if (!trimmed) return;
-    onStart({ type: "github", url: trimmed });
+    onStart({ type: 'github', url: trimmed });
   };
 
   const handleTokenChange = (val: string) => {
@@ -40,8 +40,8 @@ export function Home({ onStart }: HomeProps) {
       <div className="home__hero">
         <img src="/hero.png" alt="PlayMove" className="home__hero-img" />
         <p className="home__subtitle">
-          A playground for Move — pick a template or import from GitHub,
-          build and deploy to Sui in seconds.
+          A playground for Move — pick a template or import from GitHub, build
+          and deploy to Sui in seconds.
         </p>
       </div>
 
@@ -59,7 +59,7 @@ export function Home({ onStart }: HomeProps) {
               placeholder="https://github.com/owner/repo"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleGitHub()}
+              onKeyDown={(e) => e.key === 'Enter' && handleGitHub()}
             />
             <button
               className="home__github-btn"
@@ -69,7 +69,7 @@ export function Home({ onStart }: HomeProps) {
               Go
             </button>
             <button
-              className={`home__token-toggle${showToken ? " active" : ""}`}
+              className={`home__token-toggle${showToken ? ' active' : ''}`}
               onClick={() => setShowToken(!showToken)}
               title="GitHub Token"
             >
@@ -82,7 +82,7 @@ export function Home({ onStart }: HomeProps) {
               <div className="home__token-input-row">
                 <input
                   className="home__token-input"
-                  type={tokenVisible ? "text" : "password"}
+                  type={tokenVisible ? 'text' : 'password'}
                   placeholder="ghp_xxxx"
                   value={token}
                   onChange={(e) => handleTokenChange(e.target.value)}
@@ -91,12 +91,12 @@ export function Home({ onStart }: HomeProps) {
                   className="home__token-btn"
                   onClick={() => setTokenVisible(!tokenVisible)}
                 >
-                  {tokenVisible ? "Hide" : "Show"}
+                  {tokenVisible ? 'Hide' : 'Show'}
                 </button>
                 {token && (
                   <button
                     className="home__token-btn home__token-btn--clear"
-                    onClick={() => handleTokenChange("")}
+                    onClick={() => handleTokenChange('')}
                   >
                     Clear
                   </button>
@@ -133,7 +133,11 @@ export function Home({ onStart }: HomeProps) {
             className="home__section-link"
             title="View on GitHub"
           >
-            <img src="/github.svg" alt="GitHub" className="home__section-icon" />
+            <img
+              src="/github.svg"
+              alt="GitHub"
+              className="home__section-icon"
+            />
           </a>
         </h2>
         <div className="home__tiles">
@@ -141,7 +145,7 @@ export function Home({ onStart }: HomeProps) {
             <button
               key={t.id}
               className="home__tile"
-              onClick={() => onStart({ type: "template", templateId: t.id })}
+              onClick={() => onStart({ type: 'template', templateId: t.id })}
             >
               <span className="home__tile-name">{t.label}</span>
               <span className="home__tile-desc">{t.description}</span>
@@ -162,7 +166,11 @@ export function Home({ onStart }: HomeProps) {
             className="home__section-link"
             title="View on GitHub"
           >
-            <img src="/github.svg" alt="GitHub" className="home__section-icon" />
+            <img
+              src="/github.svg"
+              alt="GitHub"
+              className="home__section-icon"
+            />
           </a>
         </h2>
         <div className="home__tiles">
@@ -170,7 +178,7 @@ export function Home({ onStart }: HomeProps) {
             <button
               key={t.id}
               className="home__tile"
-              onClick={() => onStart({ type: "template", templateId: t.id })}
+              onClick={() => onStart({ type: 'template', templateId: t.id })}
             >
               <span className="home__tile-name">{t.label}</span>
               <span className="home__tile-desc">{t.description}</span>

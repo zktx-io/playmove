@@ -1,6 +1,6 @@
-import { useState } from "react";
-import type { Project } from "../types";
-import "./Playground.css";
+import { useState } from 'react';
+import type { Project } from '../types';
+import './Playground.css';
 
 interface PlaygroundProps {
   project: Project;
@@ -18,12 +18,12 @@ export function Playground({ project, onBack }: PlaygroundProps) {
 
   const handleBuild = () => {
     // TODO: integrate @zktx.io/sui-move-builder/lite
-    setBuildResult({ ok: true, message: "Build succeeded (stub)" });
+    setBuildResult({ ok: true, message: 'Build succeeded (stub)' });
   };
 
   const handleDeploy = () => {
     // TODO: integrate dapp-kit signAndExecuteTransaction
-    setBuildResult({ ok: true, message: "Deploy not yet implemented" });
+    setBuildResult({ ok: true, message: 'Deploy not yet implemented' });
   };
 
   return (
@@ -33,10 +33,10 @@ export function Playground({ project, onBack }: PlaygroundProps) {
         {project.files.map((f, i) => (
           <button
             key={f.path}
-            className={`playground__tab ${i === activeIdx ? "playground__tab--active" : ""}`}
+            className={`playground__tab ${i === activeIdx ? 'playground__tab--active' : ''}`}
             onClick={() => setActiveIdx(i)}
           >
-            {f.path.split("/").pop()}
+            {f.path.split('/').pop()}
           </button>
         ))}
       </div>
@@ -46,16 +46,16 @@ export function Playground({ project, onBack }: PlaygroundProps) {
         {/* TODO: replace with CodeMirror */}
         <pre
           style={{
-            padding: "1rem",
+            padding: '1rem',
             margin: 0,
-            height: "100%",
-            overflow: "auto",
-            fontSize: "0.85rem",
+            height: '100%',
+            overflow: 'auto',
+            fontSize: '0.85rem',
             lineHeight: 1.6,
-            color: "var(--text-primary)",
+            color: 'var(--text-primary)',
           }}
         >
-          {file?.content ?? ""}
+          {file?.content ?? ''}
         </pre>
       </div>
 
@@ -65,25 +65,34 @@ export function Playground({ project, onBack }: PlaygroundProps) {
           <span
             className={`playground__result-badge ${
               buildResult.ok
-                ? "playground__result-badge--success"
-                : "playground__result-badge--error"
+                ? 'playground__result-badge--success'
+                : 'playground__result-badge--error'
             }`}
           >
-            {buildResult.ok ? "✅" : "❌"} {buildResult.message}
+            {buildResult.ok ? '✅' : '❌'} {buildResult.message}
           </span>
         </div>
       )}
 
       {/* Action bar */}
       <div className="playground__actions">
-        <button className="playground__btn playground__btn--back" onClick={onBack}>
+        <button
+          className="playground__btn playground__btn--back"
+          onClick={onBack}
+        >
           ← Back
         </button>
         <div className="playground__spacer" />
-        <button className="playground__btn playground__btn--build" onClick={handleBuild}>
+        <button
+          className="playground__btn playground__btn--build"
+          onClick={handleBuild}
+        >
           ▶ Build
         </button>
-        <button className="playground__btn playground__btn--deploy" onClick={handleDeploy}>
+        <button
+          className="playground__btn playground__btn--deploy"
+          onClick={handleDeploy}
+        >
           🚀 Deploy
         </button>
       </div>
