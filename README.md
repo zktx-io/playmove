@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+<p align="center">
+  <img src="public/hero.png" alt="PlayMove" width="400" />
+</p>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# PlayMove
 
-Currently, two official plugins are available:
+A playground for Move — pick a template or import from GitHub, build and deploy to Sui in seconds.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**Build, Deploy & Play**
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 28 Move contract templates (sui-move-intro-course + MystenLabs examples)
+- Import Move projects from GitHub (public & private repos)
+- CodeMirror editor with syntax highlighting
+- WASM-based Move compiler (no backend needed)
+- Deploy to Sui via wallet (devnet / testnet / mainnet)
+- Dark theme, mobile-friendly
 
-## Expanding the ESLint configuration
+## How to Use
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Pick a template or import from GitHub
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Choose from 28 built-in Move templates, or paste a GitHub URL to import your own project.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+![Welcome](Screenshot_0.png)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Edit in the playground
+
+Browse files in the sidebar, edit code with syntax highlighting.
+
+![Playground](Screenshot_1.png)
+
+### 3. Build & Deploy
+
+Hit **▶ Build** to compile with the WASM Move compiler. Connect your wallet and click **🚀 Deploy** to publish on-chain.
+
+![Build](Screenshot_2.png)
+
+## Tips
+
+> **GitHub import rate limit** — GitHub API has a 60 req/hour limit for unauthenticated requests. Click the 🔑 button next to the import field and add a [Personal Access Token](https://github.com/settings/tokens) to raise the limit.
+
+> **Network mismatch** — When deploying, make sure the network selected in PlayMove (devnet / testnet / mainnet) matches your wallet's active network. A mismatch may cause the transaction to fail.
+
+## Tech Stack
+
+- React + Vite + TypeScript
+- CodeMirror 6 (`@codemirror/lang-rust`, `@codemirror/lang-yaml`)
+- `@zktx.io/sui-move-builder/lite` — WASM Move compiler
+- `@mysten/dapp-kit` + `@mysten/sui` — wallet & transactions
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Scripts
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Type-check & build for production |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format with Prettier |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## License
+
+MIT
