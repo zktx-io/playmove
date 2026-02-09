@@ -1,13 +1,18 @@
+/* Layout: .playground fills space below Navbar.
+   Children in order: tabs? | body(flex:1) | console(0→33vh) | actions */
+
 .playground {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
 }
 
-/* ── File tabs ── */
+/* ── File tabs (mobile only) ── */
 .playground__tabs {
-  display: flex;
+  display: none;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.25rem;
   padding: 0.5rem 1rem;
@@ -22,7 +27,7 @@
   border: 1px solid transparent;
   background: none;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-family: monospace;
   cursor: pointer;
   white-space: nowrap;
@@ -41,14 +46,170 @@
   border-color: var(--border-color);
 }
 
-/* ── Editor area ── */
-.playground__editor {
+/* ── Body: sidebar + editor — fills all remaining space ── */
+.playground__body {
   flex: 1;
-  overflow: auto;
+  display: flex;
+  min-height: 0;
 }
 
-/* ── Action bar ── */
+/* ── Sidebar (desktop only) ── */
+.playground__sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  padding: 0.5rem 0;
+}
+
+.playground__tree-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-family: monospace;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+  transition: background 0.1s;
+}
+
+.playground__tree-file {
+  cursor: pointer;
+}
+
+.playground__tree-file:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.playground__tree-item--active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.playground__tree-icon {
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.playground__tree-folder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+/* ── Editor ── */
+.playground__editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.playground__editor > div {
+  height: 100%;
+}
+
+.playground__editor .cm-editor {
+  height: 100% !important;
+}
+
+.playground__editor .cm-editor .cm-scroller {
+  overflow: auto !important;
+  overscroll-behavior: none;
+}
+
+/* ── Mobile ── */
+@media (max-width: 700px) {
+  .playground__tabs {
+    display: flex;
+  }
+
+  .playground__sidebar {
+    display: none;
+  }
+}
+
+/* ── Console (normal flow, max-height slide) ── */
+.playground__console {
+  flex-shrink: 0;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border-top: 1px solid transparent;
+  transition:
+    max-height 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.playground__console--open {
+  max-height: 33vh;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  border-top-color: var(--border-color);
+}
+
+.playground__console-body {
+  padding: 0.5rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.playground__console-line {
+  color: var(--text-secondary);
+  padding: 1px 0;
+}
+
+/* ── Deploy info ── */
+.playground__deploy-info {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.playground__deploy-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.playground__deploy-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.playground__deploy-value {
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 0.7rem;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.playground__deploy-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.playground__deploy-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Action bar (pinned to bottom) ── */
 .playground__actions {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -95,43 +256,24 @@
   color: var(--text-secondary);
 }
 
+.playground__btn--toggle {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.playground__btn-icon {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(0.7);
+}
+
+.playground__btn--toggle:not(:disabled):hover .playground__btn-icon {
+  filter: brightness(0) invert(1);
+}
+
 .playground__spacer {
   flex: 1;
-}
-
-/* ── Result card ── */
-.playground__result {
-  padding: 0.75rem 1rem;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-}
-
-.playground__result-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.playground__result-badge--success {
-  color: #2ecc71;
-}
-
-.playground__result-badge--error {
-  color: #e74c3c;
-}
-
-.playground__result-details {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  background: var(--bg-primary);
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 160px;
-  overflow-y: auto;
 }

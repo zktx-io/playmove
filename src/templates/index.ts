@@ -1,5 +1,5 @@
 import type { MoveTemplate } from './types';
-export type { MoveTemplate, FileMap } from './types';
+export type { MoveTemplate } from './types';
 
 import { MoveTemplate_Intro_HelloWorld } from './moveTemplate_01_hello';
 import { MoveTemplate_Intro_Transcript } from './moveTemplate_02_transcript';

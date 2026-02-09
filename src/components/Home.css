@@ -3,9 +3,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: 2rem;
   gap: 2.5rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* ── Hero ── */
@@ -89,6 +90,16 @@
 .home__github-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.home__error {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+  color: #fca5a5;
+  font-size: 0.8rem;
 }
 
 /* ── GitHub token ── */
@@ -291,10 +302,6 @@
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-.home__tile-emoji {
-  font-size: 1.75rem;
-}
-
 .home__tile-name {
   font-size: 0.9rem;
   font-weight: 600;
@@ -325,10 +332,6 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
-  }
-
-  .home__github-label {
-    text-align: center;
   }
 
   .home__tiles {

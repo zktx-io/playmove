@@ -4,6 +4,7 @@
   justify-content: space-between;
   padding: 0 24px;
   height: 64px;
+  flex-shrink: 0;
   background-color: var(--bg-navbar);
   border-bottom: 1px solid var(--border-color);
   position: sticky;

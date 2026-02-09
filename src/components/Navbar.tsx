@@ -23,7 +23,7 @@ export function Navbar() {
   return (
     <nav className="navbar">
       <a href="/">
-        <img src="/logo.png" alt="PlayMove" className="navbar__logo" />
+        <img src="/navbar.png" alt="PlayMove" className="navbar__logo" />
       </a>
 
       <div className="navbar__right">

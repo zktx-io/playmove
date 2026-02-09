@@ -11,16 +11,6 @@ export interface MoveTemplate {
   files: (pkgName: string) => FileMap;
 }
 
-/** Picker item shape */
-export interface PTBTemplateItem {
-  id: string;
-  label: string;
-  defaultName: string;
-  description: string;
-  detail: string;
-  file: () => string;
-}
-
 export const COMMON_README_TAIL = `
 ## Build & Deploy
 

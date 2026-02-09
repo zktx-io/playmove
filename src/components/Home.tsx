@@ -9,9 +9,11 @@ const GH_TOKEN_CREATE_URL =
 
 interface HomeProps {
   onStart: (source: ProjectSource) => void;
+  loading?: boolean;
+  error?: string | null;
 }
 
-export function Home({ onStart }: HomeProps) {
+export function Home({ onStart, loading, error }: HomeProps) {
   const [url, setUrl] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
@@ -64,9 +66,9 @@ export function Home({ onStart }: HomeProps) {
             <button
               className="home__github-btn"
               onClick={handleGitHub}
-              disabled={!url.trim()}
+              disabled={!url.trim() || loading}
             >
-              Go
+              {loading ? '⏳' : 'Go'}
             </button>
             <button
               className={`home__token-toggle${showToken ? ' active' : ''}`}
@@ -118,6 +120,7 @@ export function Home({ onStart }: HomeProps) {
               </p>
             </div>
           )}
+          {error && <div className="home__error">❌ {error}</div>}
         </div>
       </div>
 
