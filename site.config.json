@@ -8,7 +8,8 @@
         "name": "playmove",
         "description": "Build, deploy & play — a playground for Move smart contracts on Sui. Pick a template or import from GitHub, build with WASM, and deploy in seconds.",
         "project_url": "https://github.com/zktx-io/playmove",
-        "creator": "zktx.io"
+        "creator": "zktx.io",
+        "site_obj_id": "0xce9c6a8f9a16336768c1fac4252b9e8070bf127146b170996aba38e544fc46f2"
     },
     "epochs": 10,
     "path": "./dist",
