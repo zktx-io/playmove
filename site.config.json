@@ -1,0 +1,16 @@
+{
+    "network": "mainnet",
+    "owner": "0x54db5a65ded3365f3b4906c6822d95d78eee10ecbdd150bc58380e047a930189",
+    "site_name": "playmove",
+    "metadata": {
+        "link": "https://playmove.wal.app",
+        "image_url": "https://docs.zktx.io/images/playmove.png",
+        "name": "playmove",
+        "description": "Build, deploy & play — a playground for Move smart contracts on Sui. Pick a template or import from GitHub, build with WASM, and deploy in seconds.",
+        "project_url": "https://github.com/zktx-io/playmove",
+        "creator": "zktx.io"
+    },
+    "epochs": 10,
+    "path": "./dist",
+    "write_retry_limit": 15
+}
