@@ -38,6 +38,7 @@ type BuildSuccess = BuildResult & {
 };
 
 type AnsiColorMap = Record<number, string>;
+const MAX_LOG_LINES = 300;
 
 /* eslint-disable no-control-regex */
 const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
@@ -206,7 +207,12 @@ export function Playground({ project }: PlaygroundProps) {
 
   const addLog = useCallback((msg: string) => {
     const ts = new Date().toLocaleTimeString();
-    setLogs((prev) => [...prev, `[${ts}] ${msg}`]);
+    setLogs((prev) => {
+      const next = [...prev, `[${ts}] ${msg}`];
+      return next.length > MAX_LOG_LINES
+        ? next.slice(next.length - MAX_LOG_LINES)
+        : next;
+    });
   }, []);
 
   useEffect(() => {
@@ -263,7 +269,7 @@ export function Playground({ project }: PlaygroundProps) {
       const resolved = await resolveDependencies({
         files,
         ansiColor: true,
-        network: network as 'testnet' | 'mainnet',
+        network: network as 'devnet' | 'testnet' | 'mainnet',
       });
 
       const sourceFiles = Object.fromEntries(
@@ -278,7 +284,7 @@ export function Playground({ project }: PlaygroundProps) {
         resolvedDependencies: resolved,
         silenceWarnings: false,
         ansiColor: true,
-        network: network as 'testnet' | 'mainnet',
+        network: network as 'devnet' | 'testnet' | 'mainnet',
         onProgress: (ev) => {
           switch (ev.type) {
             case 'resolve_dep':

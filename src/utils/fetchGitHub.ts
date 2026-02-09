@@ -29,7 +29,15 @@ interface GitHubRef {
  *   https://github.com/MystenLabs/sui/tree/main/examples/move  → ref='main', path='examples/move'
  */
 export function parseGitHubUrl(raw: string): GitHubRef {
-  const url = new URL(raw.trim().replace(/\/+$/, ''));
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  const url = new URL(withScheme);
+  const host = url.hostname.toLowerCase();
+  if (host !== 'github.com' && host !== 'www.github.com') {
+    throw new Error('Invalid GitHub URL — expected github.com/owner/repo');
+  }
   const parts = url.pathname.split('/').filter(Boolean);
 
   if (parts.length < 2) {

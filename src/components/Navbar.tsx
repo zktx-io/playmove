@@ -26,11 +26,7 @@ export function Navbar({ onHome }: NavbarProps) {
 
   return (
     <nav className="navbar">
-      <button
-        type="button"
-        className="navbar__home-btn"
-        onClick={onHome}
-      >
+      <button type="button" className="navbar__home-btn" onClick={onHome}>
         <img src="/navbar.png" alt="PlayMove" className="navbar__logo" />
       </button>
 
