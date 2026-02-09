@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mysten/dapp-kit": "^0.20.0",
+    "@mysten/sui": "^1.45.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
