@@ -10,7 +10,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "preview": "vite preview",
-    "preview:mainnet": "preview -mainnet -id 0xce9c6a8f9a16336768c1fac4252b9e8070bf127146b170996aba38e544fc46f2 -port 3000"
+    "preview:mainnet": "preview -mainnet -id 0x1cc258c620ca307775dfdadf93ec2719a2db38ac9566a77f35bbdad0a857cc57 -port 3000"
   },
   "dependencies": {
     "@codemirror/lang-rust": "^6.0.2",
