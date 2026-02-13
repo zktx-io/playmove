@@ -3,7 +3,11 @@ import CodeMirror from '@uiw/react-codemirror';
 import { rust } from '@codemirror/lang-rust';
 import { yaml } from '@codemirror/lang-yaml';
 import { EditorView } from '@codemirror/view';
-import { useSuiClientContext } from '@mysten/dapp-kit';
+import {
+  ConnectModal,
+  useCurrentAccount,
+  useSuiClientContext,
+} from '@mysten/dapp-kit';
 import { useMoveBuilder } from '../hooks/useMoveBuilder';
 
 import type { Project } from '../types';
@@ -116,6 +120,7 @@ export function Playground({ project }: PlaygroundProps) {
 
   const [showLogs, setShowLogs] = useState(false);
   const logEndRef = useRef<HTMLDivElement | null>(null);
+  const account = useCurrentAccount();
 
   // dApp Kit
   const { network, selectNetwork } = useSuiClientContext();
@@ -184,6 +189,10 @@ export function Playground({ project }: PlaygroundProps) {
   const handleBuild = () => {
     setShowLogs(true);
     onBuild();
+  };
+  const handleDeploy = () => {
+    setShowLogs(true);
+    onDeploy();
   };
 
   /* ── Sorted file paths ─────────────────────────────── */
@@ -316,13 +325,23 @@ export function Playground({ project }: PlaygroundProps) {
         >
           {busy ? '⏳ Building…' : '▶ Build'}
         </button>
-        <button
-          className="playground__btn playground__btn--deploy"
-          onClick={onDeploy}
-          disabled={!compiled || isPublishing || buildOk !== true}
-        >
-          {isPublishing ? '⏳ Deploying…' : '🚀 Deploy'}
-        </button>
+        {account ? (
+          <button
+            className="playground__btn playground__btn--deploy"
+            onClick={handleDeploy}
+            disabled={!compiled || isPublishing || buildOk !== true}
+          >
+            {isPublishing ? '⏳ Deploying…' : '🚀 Deploy'}
+          </button>
+        ) : (
+          <ConnectModal
+            trigger={
+              <button className="playground__btn playground__btn--deploy">
+                Connect Wallet
+              </button>
+            }
+          />
+        )}
       </div>
     </div>
   );
