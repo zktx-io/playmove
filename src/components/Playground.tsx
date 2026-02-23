@@ -6,8 +6,10 @@ import { EditorView } from '@codemirror/view';
 import {
   ConnectModal,
   useCurrentAccount,
-  useSuiClientContext,
-} from '@mysten/dapp-kit';
+  useCurrentNetwork,
+  useDAppKit,
+} from '@mysten/dapp-kit-react';
+import type { DAppKitConnectModal } from '@mysten/dapp-kit-core/web';
 import { useMoveBuilder } from '../hooks/useMoveBuilder';
 
 import type { Project } from '../types';
@@ -120,10 +122,13 @@ export function Playground({ project }: PlaygroundProps) {
 
   const [showLogs, setShowLogs] = useState(false);
   const logEndRef = useRef<HTMLDivElement | null>(null);
+  const connectModalRef = useRef<DAppKitConnectModal | null>(null);
   const account = useCurrentAccount();
 
   // dApp Kit
-  const { network, selectNetwork } = useSuiClientContext();
+  const dAppKit = useDAppKit();
+  const network = useCurrentNetwork();
+  const selectNetwork = (n: string) => dAppKit.switchNetwork(n as Parameters<typeof dAppKit.switchNetwork>[0]);
 
   const explorerBase =
     network === 'mainnet'
@@ -334,13 +339,16 @@ export function Playground({ project }: PlaygroundProps) {
             {isPublishing ? '⏳ Deploying…' : '🚀 Deploy'}
           </button>
         ) : (
-          <ConnectModal
-            trigger={
-              <button className="playground__btn playground__btn--deploy">
-                Connect Wallet
-              </button>
-            }
-          />
+          <>
+            <button
+              className="playground__btn playground__btn--deploy"
+              onClick={() => connectModalRef.current?.show()}
+            >
+              Connect Wallet
+            </button>
+            {/* ConnectModal is a Lit web component; open imperatively via ref */}
+            <ConnectModal ref={connectModalRef} />
+          </>
         )}
       </div>
     </div>
@@ -405,9 +413,8 @@ function FileTree({
         return (
           <div key={node.path ?? `dir-${node.name}-${depth}`}>
             <div
-              className={`playground__tree-item ${
-                isFile ? 'playground__tree-file' : 'playground__tree-folder'
-              } ${isSelected ? 'playground__tree-item--active' : ''}`}
+              className={`playground__tree-item ${isFile ? 'playground__tree-file' : 'playground__tree-folder'
+                } ${isSelected ? 'playground__tree-item--active' : ''}`}
               style={{ paddingLeft: 12 + depth * 14 }}
               onClick={() => node.path && onSelect(node.path)}
             >

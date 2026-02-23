@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   useCurrentAccount,
-  useSignAndExecuteTransaction,
-  useSuiClient,
-  useSuiClientContext,
-} from '@mysten/dapp-kit';
+  useCurrentClient,
+  useCurrentNetwork,
+  useDAppKit,
+} from '@mysten/dapp-kit-react';
+import type { SuiClientTypes } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { fromBase64 } from '@mysten/sui/utils';
 import {
@@ -41,10 +42,10 @@ export function useMoveBuilder(files: Record<string, string>) {
 
   // dApp Kit
   const account = useCurrentAccount();
-  const suiClient = useSuiClient();
-  const { mutate: signAndExecute, isPending: isPublishing } =
-    useSignAndExecuteTransaction();
-  const { network } = useSuiClientContext();
+  const dAppKit = useDAppKit();
+  const suiClient = useCurrentClient();
+  const [isPublishing, setIsPublishing] = useState(false);
+  const network = useCurrentNetwork();
 
   /* ── Log helper ────────────────────────────────────── */
 
@@ -166,13 +167,14 @@ export function useMoveBuilder(files: Record<string, string>) {
 
   /* ── Deploy ────────────────────────────────────────── */
 
-  const onDeploy = () => {
+  const onDeploy = async () => {
     if (!compiled || !account) return;
     if (!('modules' in compiled) || !(compiled as BuildSuccess).modules.length)
       return;
 
     setPackageId('');
     setTxDigest('');
+    setIsPublishing(true);
     addLog('🚀 Publishing…');
 
     const tx = new Transaction();
@@ -185,35 +187,48 @@ export function useMoveBuilder(files: Record<string, string>) {
     });
     tx.transferObjects([upgradeCap], tx.pure.address(account.address));
 
-    signAndExecute(
-      { transaction: tx },
-      {
-        onSuccess: (res) => {
-          addLog(`📜 Tx digest: ${res.digest}`);
-          setTxDigest(res.digest);
-          void (async () => {
-            try {
-              const txb = await suiClient.waitForTransaction({
-                digest: res.digest,
-                options: { showObjectChanges: true },
-              });
-              const pub = txb.objectChanges?.find(
-                (c) => c.type === 'published',
-              ) as { packageId?: string } | undefined;
-              if (pub?.packageId) {
-                addLog(`📦 Package ID: ${pub.packageId}`);
-                setPackageId(pub.packageId);
-              }
-            } catch (e) {
-              addLog(`⚠️ Lookup failed: ${String(e)}`);
-            }
-          })();
-        },
-        onError: (e) => {
-          addLog(`❌ Publish failed: ${String(e)}`);
-        },
-      },
-    );
+    try {
+      const res = await dAppKit.signAndExecuteTransaction({ transaction: tx });
+      // gRPC result is a discriminated union: check $kind before accessing fields
+      const digest =
+        res.$kind === 'Transaction'
+          ? res.Transaction.digest
+          : res.FailedTransaction?.digest ?? '';
+      if (!digest) {
+        addLog('❌ Transaction failed (no digest)');
+        return;
+      }
+      addLog(`📜 Tx digest: ${digest}`);
+      setTxDigest(digest);
+      try {
+        // waitForTransaction: core API include 스타일 (2.x) — showObjectChanges 사용 불가
+        // effects: true 필수 — changedObjects 읽기 위해 필요 (section 4.5)
+        const txb = await suiClient.waitForTransaction({
+          digest,
+          include: { transaction: true, effects: true },
+        });
+        const txData =
+          txb.$kind === 'Transaction' ? txb.Transaction : txb.FailedTransaction;
+        // 2.x: 최상위 objectChanges 없음 — effects.changedObjects를 idOperation으로 필터링
+        // ChangedObject.objectId는 최상위 필드 (outputState 아님)
+        const changedObjects: SuiClientTypes.ChangedObject[] =
+          txData.effects?.changedObjects ?? [];
+        // 패키지 publish 시 idOperation === 'Created' && outputState === 'PackageWrite'
+        const createdPkg = changedObjects.find(
+          (o) => o.idOperation === 'Created' && o.outputState === 'PackageWrite',
+        )?.objectId;
+        if (createdPkg) {
+          addLog(`📦 Package ID: ${createdPkg}`);
+          setPackageId(createdPkg);
+        }
+      } catch (e) {
+        addLog(`⚠️ Lookup failed: ${String(e)}`);
+      }
+    } catch (e) {
+      addLog(`❌ Publish failed: ${String(e)}`);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return {
