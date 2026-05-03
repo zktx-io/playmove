@@ -20,7 +20,7 @@
     "@mysten/dapp-kit-react": "^2.0.1",
     "@mysten/sui": "^2.16.0",
     "@uiw/react-codemirror": "^4.25.4",
-    "@zktx.io/sui-move-builder": "^0.3.1",
+    "@zktx.io/sui-move-builder": "^0.3.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

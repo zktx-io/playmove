@@ -9,12 +9,15 @@ import type { SuiClientTypes } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { fromBase64 } from '@mysten/sui/utils';
 import {
-  buildMovePackage,
-  getSuiMoveVersion,
-  initMoveCompiler,
-  resolveDependencies,
-} from '@zktx.io/sui-move-builder/lite';
-import type { BuildSuccess as CompilerBuildSuccess } from '@zktx.io/sui-move-builder/lite';
+  getPinnedSuiMoveVersion,
+  initMovePackageBuilder,
+  prepareMovePackagePublish,
+  resolveMovePackageDependencies,
+} from '@zktx.io/sui-move-builder';
+import type {
+  MovePackageProgressEvent,
+  MovePackagePublishSuccess as CompilerBuildSuccess,
+} from '@zktx.io/sui-move-builder';
 import type { FileMap } from '../types';
 import { getBuildFiles } from '../utils/projectFiles';
 import {
@@ -78,7 +81,7 @@ export function useMoveBuilder(files: FileMap) {
     let canceled = false;
     (async () => {
       if (!compilerRef.current) {
-        compilerRef.current = initMoveCompiler();
+        compilerRef.current = initMovePackageBuilder();
       }
       try {
         await compilerRef.current;
@@ -87,7 +90,7 @@ export function useMoveBuilder(files: FileMap) {
       }
       if (canceled) return;
       try {
-        const version = versionRef.current ?? (await getSuiMoveVersion());
+        const version = versionRef.current ?? (await getPinnedSuiMoveVersion());
         versionRef.current = version;
         const ts = new Date().toLocaleTimeString();
         setLogs((prev) => [...prev, `[${ts}] 📌 Compiler ready — ${version}`]);
@@ -109,25 +112,25 @@ export function useMoveBuilder(files: FileMap) {
     const start = performance.now();
     try {
       if (!compilerRef.current) {
-        compilerRef.current = initMoveCompiler();
+        compilerRef.current = initMovePackageBuilder();
       }
       await compilerRef.current;
 
       addLog('📦 Resolving dependencies…');
-      const resolved = await resolveDependencies({
+      const resolved = await resolveMovePackageDependencies({
         files: buildFiles,
         ansiColor: true,
         network,
       });
 
       addLog('🔨 Compiling…');
-      const result = await buildMovePackage({
+      const result = await prepareMovePackagePublish({
         files: buildFiles,
         resolvedDependencies: resolved,
         silenceWarnings: false,
         ansiColor: true,
         network,
-        onProgress: (ev) => {
+        onProgress: (ev: MovePackageProgressEvent) => {
           switch (ev.type) {
             case 'resolve_dep':
               addLog(
@@ -160,7 +163,14 @@ export function useMoveBuilder(files: FileMap) {
 
       addLog(`✅ Build succeeded in ${elapsedSeconds}s`);
       addLog(`Digest bytes: ${result.digest.length}`);
-      addLog(`Modules: ${result.modules.length}`);
+      addLog(
+        `🧩 Bytecode ready: ${result.modules.length} ${pluralize(
+          result.modules.length,
+          'module',
+        )}`,
+      );
+      addLog('🔎 Inspector console: bytecode dumped');
+      logBuildBytecodeToInspector(result, elapsedSeconds);
       if (result.warnings) addLog(`⚠️ ${result.warnings}`);
       setBuildResult({
         status: 'success',
@@ -299,6 +309,43 @@ function findPublishedPackageId(
     (object) =>
       object.idOperation === 'Created' && object.outputState === 'PackageWrite',
   )?.objectId;
+}
+
+function logBuildBytecodeToInspector(
+  compiled: CompilerBuildSuccess,
+  elapsedSeconds: string,
+) {
+  const modules = compiled.modules.map((module, index) => ({
+    index,
+    bytes: fromBase64(module).length,
+    preview: previewBase64(module),
+    base64: module,
+  }));
+  const digestHex = `0x${compiled.digest
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')}`;
+
+  console.groupCollapsed(
+    `[playmove] Bytecode ready: ${modules.length} ${pluralize(
+      modules.length,
+      'module',
+    )} in ${elapsedSeconds}s`,
+  );
+  console.table(
+    modules.map(({ index, bytes, preview }) => ({ index, bytes, preview })),
+  );
+  console.log('modulesBase64', compiled.modules);
+  console.log('dependencies', compiled.dependencies);
+  console.log('digestHex', digestHex);
+  console.groupEnd();
+}
+
+function previewBase64(value: string): string {
+  return value.length > 48 ? `${value.slice(0, 48)}...` : value;
+}
+
+function pluralize(count: number, label: string): string {
+  return count === 1 ? label : `${label}s`;
 }
 
 function formatStatusError(
