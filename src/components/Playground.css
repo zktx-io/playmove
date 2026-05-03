@@ -1,6 +1,3 @@
-/* Layout: .playground fills space below Navbar.
-   Children in order: tabs? | body(flex:1) | console(0→33vh) | actions */
-
 .playground {
   flex: 1;
   display: flex;
@@ -9,9 +6,8 @@
   overflow: hidden;
 }
 
-/* ── File tabs (mobile only) ── */
 .playground__tabs {
-  display: none;
+  display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: 0.25rem;
@@ -46,62 +42,18 @@
   border-color: var(--border-color);
 }
 
-/* ── Body: sidebar + editor — fills all remaining space ── */
+.playground__tab--hidden {
+  cursor: default;
+  border-color: var(--border-color);
+  opacity: 0.7;
+}
+
 .playground__body {
   flex: 1;
   display: flex;
   min-height: 0;
 }
 
-/* ── Sidebar (desktop only) ── */
-.playground__sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  overscroll-behavior: none;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
-  padding: 0.5rem 0;
-}
-
-.playground__tree-item {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.75rem;
-  font-size: 0.8rem;
-  font-family: monospace;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  cursor: default;
-  transition: background 0.1s;
-}
-
-.playground__tree-file {
-  cursor: pointer;
-}
-
-.playground__tree-file:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.playground__tree-item--active {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.playground__tree-icon {
-  font-size: 0.7rem;
-  flex-shrink: 0;
-}
-
-.playground__tree-folder {
-  color: var(--text-secondary);
-  opacity: 0.7;
-  font-weight: 600;
-}
-
-/* ── Editor ── */
 .playground__editor {
   flex: 1;
   min-height: 0;
@@ -122,18 +74,6 @@
   overscroll-behavior: none;
 }
 
-/* ── Mobile ── */
-@media (max-width: 700px) {
-  .playground__tabs {
-    display: flex;
-  }
-
-  .playground__sidebar {
-    display: none;
-  }
-}
-
-/* ── Console (normal flow, max-height slide) ── */
 .playground__console {
   flex-shrink: 0;
   max-height: 0;
@@ -173,6 +113,12 @@
   gap: 0.35rem;
 }
 
+.playground__deploy-status {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .playground__deploy-row {
   display: flex;
   align-items: center;
@@ -207,7 +153,6 @@
   text-decoration: underline;
 }
 
-/* ── Action bar (pinned to bottom) ── */
 .playground__actions {
   flex-shrink: 0;
   display: flex;
@@ -272,7 +217,6 @@
   flex: 1;
 }
 
-/* ── Network selector ── */
 .playground__network-select {
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
@@ -293,4 +237,20 @@
 .playground__network-select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .playground__actions {
+    gap: 0.5rem;
+    padding: 0.65rem;
+  }
+
+  .playground__btn {
+    padding: 0.5rem 0.8rem;
+    white-space: nowrap;
+  }
+
+  .playground__network-select {
+    max-width: 96px;
+  }
 }

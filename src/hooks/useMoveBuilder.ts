@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useCurrentAccount,
   useCurrentClient,
@@ -14,40 +14,55 @@ import {
   initMoveCompiler,
   resolveDependencies,
 } from '@zktx.io/sui-move-builder/lite';
+import type { BuildSuccess as CompilerBuildSuccess } from '@zktx.io/sui-move-builder/lite';
+import type { FileMap } from '../types';
+import { getBuildFiles } from '../utils/projectFiles';
+import {
+  FALLBACK_NETWORK,
+  isSuiNetwork,
+  type SuiNetwork,
+} from '../utils/networks';
 
-/* ── Types ───────────────────────────────────────────── */
+export type BuildResultState =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | {
+      status: 'success';
+      compiled: CompilerBuildSuccess;
+      elapsedSeconds: string;
+      files: FileMap;
+    }
+  | { status: 'failure'; error: string };
 
-export type BuildResult = Awaited<ReturnType<typeof buildMovePackage>>;
-export type BuildSuccess = BuildResult & {
-  success: true;
-  modules: string[];
-  dependencies?: string[];
-  digest?: string;
-};
+export type DeployResultState =
+  | { status: 'idle' }
+  | { status: 'publishing' }
+  | { status: 'success'; digest: string; packageId: string; files: FileMap }
+  | { status: 'failure'; error: string; digest?: string; files: FileMap };
 
 const MAX_LOG_LINES = 300;
 
-export function useMoveBuilder(files: Record<string, string>) {
-  // Build / deploy state
-  const [busy, setBusy] = useState(false);
+export function useMoveBuilder(files: FileMap) {
   const [logs, setLogs] = useState<string[]>([]);
-  const [buildOk, setBuildOk] = useState<boolean | null>(null);
-  const [compiled, setCompiled] = useState<BuildResult | null>(null);
-  const [packageId, setPackageId] = useState('');
-  const [txDigest, setTxDigest] = useState('');
+  const [buildResult, setBuildResult] = useState<BuildResultState>({
+    status: 'idle',
+  });
+  const [deployResult, setDeployResult] = useState<DeployResultState>({
+    status: 'idle',
+  });
 
-  // Compiler
   const compilerRef = useRef<Promise<void> | null>(null);
   const versionRef = useRef<string | null>(null);
 
-  // dApp Kit
   const account = useCurrentAccount();
   const dAppKit = useDAppKit();
   const suiClient = useCurrentClient();
-  const [isPublishing, setIsPublishing] = useState(false);
-  const network = useCurrentNetwork();
+  const currentNetwork = useCurrentNetwork();
+  const network: SuiNetwork = isSuiNetwork(currentNetwork)
+    ? currentNetwork
+    : FALLBACK_NETWORK;
 
-  /* ── Log helper ────────────────────────────────────── */
+  const buildFiles = useMemo(() => getBuildFiles(files), [files]);
 
   const addLog = useCallback((msg: string) => {
     const ts = new Date().toLocaleTimeString();
@@ -59,7 +74,6 @@ export function useMoveBuilder(files: Record<string, string>) {
     });
   }, []);
 
-  // Init compiler on mount — log version silently
   useEffect(() => {
     let canceled = false;
     (async () => {
@@ -73,10 +87,10 @@ export function useMoveBuilder(files: Record<string, string>) {
       }
       if (canceled) return;
       try {
-        const v = versionRef.current ?? (await getSuiMoveVersion());
-        versionRef.current = v;
+        const version = versionRef.current ?? (await getSuiMoveVersion());
+        versionRef.current = version;
         const ts = new Date().toLocaleTimeString();
-        setLogs((prev) => [...prev, `[${ts}] 📌 Compiler ready — ${v}`]);
+        setLogs((prev) => [...prev, `[${ts}] 📌 Compiler ready — ${version}`]);
       } catch {
         /* version read failure is non-fatal */
       }
@@ -86,16 +100,11 @@ export function useMoveBuilder(files: Record<string, string>) {
     };
   }, []);
 
-  /* ── Build ─────────────────────────────────────────── */
-
   const onBuild = async () => {
     addLog('── ── ── ── ──');
     addLog('🚀 Build started');
-    setBuildOk(null);
-    setCompiled(null);
-    setPackageId('');
-    setTxDigest('');
-    setBusy(true);
+    setBuildResult({ status: 'running' });
+    setDeployResult({ status: 'idle' });
 
     const start = performance.now();
     try {
@@ -106,24 +115,18 @@ export function useMoveBuilder(files: Record<string, string>) {
 
       addLog('📦 Resolving dependencies…');
       const resolved = await resolveDependencies({
-        files,
+        files: buildFiles,
         ansiColor: true,
-        network: network as 'devnet' | 'testnet' | 'mainnet',
+        network,
       });
-
-      const sourceFiles = Object.fromEntries(
-        Object.entries(files).filter(
-          ([p]) => p === 'Move.toml' || p.endsWith('.move'),
-        ),
-      );
 
       addLog('🔨 Compiling…');
       const result = await buildMovePackage({
-        files: sourceFiles,
+        files: buildFiles,
         resolvedDependencies: resolved,
         silenceWarnings: false,
         ansiColor: true,
-        network: network as 'devnet' | 'testnet' | 'mainnet',
+        network,
         onProgress: (ev) => {
           switch (ev.type) {
             case 'resolve_dep':
@@ -143,103 +146,175 @@ export function useMoveBuilder(files: Record<string, string>) {
         },
       });
 
-      const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+      const elapsedSeconds = ((performance.now() - start) / 1000).toFixed(1);
 
       if ('error' in result) {
         addLog('❌ Build failed');
-        addLog(result.error ?? 'Unknown error');
-        setBuildOk(false);
-      } else {
-        addLog(`✅ Build succeeded in ${elapsed}s`);
-        addLog(`Digest: ${result.digest ?? '-'}`);
-        addLog(`Modules: ${result.modules.length}`);
-        if (result.warnings) addLog(`⚠️ ${result.warnings}`);
-        setBuildOk(true);
-        setCompiled(result);
+        addLog(result.error || 'Unknown error');
+        setBuildResult({
+          status: 'failure',
+          error: result.error || 'Unknown error',
+        });
+        return;
       }
+
+      addLog(`✅ Build succeeded in ${elapsedSeconds}s`);
+      addLog(`Digest bytes: ${result.digest.length}`);
+      addLog(`Modules: ${result.modules.length}`);
+      if (result.warnings) addLog(`⚠️ ${result.warnings}`);
+      setBuildResult({
+        status: 'success',
+        compiled: result,
+        elapsedSeconds,
+        files,
+      });
     } catch (e) {
-      addLog(`❌ ${String(e)}`);
-      setBuildOk(false);
-    } finally {
-      setBusy(false);
+      const error = formatError(e);
+      addLog(`❌ ${error}`);
+      setBuildResult({ status: 'failure', error });
     }
   };
 
-  /* ── Deploy ────────────────────────────────────────── */
-
   const onDeploy = async () => {
-    if (!compiled || !account) return;
-    if (!('modules' in compiled) || !(compiled as BuildSuccess).modules.length)
+    if (
+      buildResult.status !== 'success' ||
+      buildResult.files !== files ||
+      !account
+    ) {
       return;
+    }
 
-    setPackageId('');
-    setTxDigest('');
-    setIsPublishing(true);
+    const compiled = buildResult.compiled;
+    if (!compiled.modules.length) return;
+
+    setDeployResult({ status: 'publishing' });
     addLog('🚀 Publishing…');
 
     const tx = new Transaction();
-    const modules = (compiled as BuildSuccess).modules.map(
-      (m) => Array.from(fromBase64(m)) as number[],
+    const modules = compiled.modules.map((module) =>
+      Array.from(fromBase64(module)),
     );
     const [upgradeCap] = tx.publish({
       modules,
-      dependencies: (compiled as BuildSuccess).dependencies ?? [],
+      dependencies: compiled.dependencies,
     });
     tx.transferObjects([upgradeCap], tx.pure.address(account.address));
 
     try {
-      const res = await dAppKit.signAndExecuteTransaction({ transaction: tx });
-      // gRPC result is a discriminated union: check $kind before accessing fields
-      const digest =
-        res.$kind === 'Transaction'
-          ? res.Transaction.digest
-          : res.FailedTransaction?.digest ?? '';
+      const signed = await dAppKit.signAndExecuteTransaction({
+        transaction: tx,
+      });
+      const signedTx = getTransactionData(signed);
+      const digest = signedTx?.digest ?? '';
+
       if (!digest) {
-        addLog('❌ Transaction failed (no digest)');
+        failDeploy('Transaction failed before a digest was returned');
         return;
       }
+
       addLog(`📜 Tx digest: ${digest}`);
-      setTxDigest(digest);
-      try {
-        // waitForTransaction: core API include 스타일 (2.x) — showObjectChanges 사용 불가
-        // effects: true 필수 — changedObjects 읽기 위해 필요 (section 4.5)
-        const txb = await suiClient.waitForTransaction({
-          digest,
-          include: { transaction: true, effects: true },
-        });
-        const txData =
-          txb.$kind === 'Transaction' ? txb.Transaction : txb.FailedTransaction;
-        // 2.x: 최상위 objectChanges 없음 — effects.changedObjects를 idOperation으로 필터링
-        // ChangedObject.objectId는 최상위 필드 (outputState 아님)
-        const changedObjects: SuiClientTypes.ChangedObject[] =
-          txData.effects?.changedObjects ?? [];
-        // 패키지 publish 시 idOperation === 'Created' && outputState === 'PackageWrite'
-        const createdPkg = changedObjects.find(
-          (o) => o.idOperation === 'Created' && o.outputState === 'PackageWrite',
-        )?.objectId;
-        if (createdPkg) {
-          addLog(`📦 Package ID: ${createdPkg}`);
-          setPackageId(createdPkg);
-        }
-      } catch (e) {
-        addLog(`⚠️ Lookup failed: ${String(e)}`);
+
+      if (signed.$kind === 'FailedTransaction') {
+        failDeploy(formatStatusError(signedTx?.status), digest);
+        return;
       }
+
+      const waited = await suiClient.core.waitForTransaction({
+        digest,
+        include: { transaction: true, effects: true },
+      });
+      const txData = getTransactionData(waited);
+
+      if (!txData || !txData.status.success) {
+        failDeploy(formatStatusError(txData?.status), digest);
+        return;
+      }
+
+      const createdPackageId = findPublishedPackageId(
+        txData.effects?.changedObjects ?? [],
+      );
+
+      if (!createdPackageId) {
+        failDeploy(
+          'Published transaction finished, but package ID was not found',
+          digest,
+        );
+        return;
+      }
+
+      addLog(`📦 Package ID: ${createdPackageId}`);
+      setDeployResult({
+        status: 'success',
+        digest,
+        packageId: createdPackageId,
+        files,
+      });
     } catch (e) {
-      addLog(`❌ Publish failed: ${String(e)}`);
-    } finally {
-      setIsPublishing(false);
+      failDeploy(formatError(e));
     }
   };
 
+  const failDeploy = (error: string, digest?: string) => {
+    addLog(`❌ Publish failed: ${error}`);
+    setDeployResult({ status: 'failure', error, digest, files });
+  };
+
+  const freshBuildResult =
+    buildResult.status === 'success' && buildResult.files !== files
+      ? ({ status: 'idle' } satisfies BuildResultState)
+      : buildResult;
+  const freshDeployResult =
+    (deployResult.status === 'success' || deployResult.status === 'failure') &&
+    deployResult.files !== files
+      ? ({ status: 'idle' } satisfies DeployResultState)
+      : deployResult;
+
   return {
-    busy,
     logs,
-    buildOk,
-    compiled,
-    packageId,
-    txDigest,
-    isPublishing,
+    buildResult: freshBuildResult,
+    deployResult: freshDeployResult,
+    isBuilding: freshBuildResult.status === 'running',
+    isPublishing: freshDeployResult.status === 'publishing',
+    canDeploy: freshBuildResult.status === 'success',
     onBuild,
     onDeploy,
   };
+}
+
+function getTransactionData(
+  result: SuiClientTypes.TransactionResult<{
+    transaction: true;
+    effects: true;
+  }>,
+) {
+  return result.$kind === 'Transaction'
+    ? result.Transaction
+    : result.FailedTransaction;
+}
+
+function findPublishedPackageId(
+  changedObjects: SuiClientTypes.ChangedObject[],
+): string | undefined {
+  return changedObjects.find(
+    (object) =>
+      object.idOperation === 'Created' && object.outputState === 'PackageWrite',
+  )?.objectId;
+}
+
+function formatStatusError(
+  status: SuiClientTypes.ExecutionStatus | undefined,
+): string {
+  if (!status) return 'Transaction failed';
+  if (status.success) return 'Transaction failed';
+  return formatError(status.error);
+}
+
+function formatError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
 }

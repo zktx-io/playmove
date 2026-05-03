@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/49ecb503-04d1-46dd-b531-e456989780b1
 ## Features
 
 - 28 Move contract templates (sui-move-intro-course + MystenLabs examples)
-- Import Move projects from GitHub (public & private repos)
+- Import one Move package from GitHub (public repos, or private repos with a session token)
 - CodeMirror editor with syntax highlighting
 - WASM-based Move compiler (no backend needed)
 - Deploy to Sui via wallet (devnet / testnet / mainnet)
@@ -32,7 +32,7 @@ Choose from 28 built-in Move templates, or paste a GitHub URL to import your own
 
 ### 2. Edit in the playground
 
-Browse files in the sidebar, edit code with syntax highlighting.
+Switch between the small set of surfaced files, edit code with syntax highlighting, and keep the rest included in builds.
 
 ![Playground](public/screenshot_01.png)
 
@@ -44,7 +44,7 @@ Hit **▶ Build** to compile with the WASM Move compiler. Connect your wallet an
 
 ## Tips
 
-> **GitHub import rate limit** — GitHub API has a 60 req/hour limit for unauthenticated requests. Click the 🔑 button next to the import field and add a [Personal Access Token](https://github.com/settings/tokens) to raise the limit.
+> **GitHub import rate limit** — GitHub API has a 60 req/hour limit for unauthenticated requests. Click the 🔑 button next to the import field and add a fine-grained read-only token for this tab session to import private repos or raise the limit.
 
 > **Network mismatch** — When deploying, make sure the network selected in PlayMove (devnet / testnet / mainnet) matches your wallet's active network. A mismatch may cause the transaction to fail.
 
@@ -64,13 +64,13 @@ npm run dev
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server |
-| `npm run build` | Type-check & build for production |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format with Prettier |
+| Command           | Description                       |
+| ----------------- | --------------------------------- |
+| `npm run dev`     | Start dev server                  |
+| `npm run build`   | Type-check & build for production |
+| `npm run preview` | Preview production build          |
+| `npm run lint`    | Run ESLint                        |
+| `npm run format`  | Format with Prettier              |
 
 ## License
 

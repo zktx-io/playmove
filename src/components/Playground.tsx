@@ -1,21 +1,31 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode, RefObject } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { rust } from '@codemirror/lang-rust';
 import { yaml } from '@codemirror/lang-yaml';
 import { EditorView } from '@codemirror/view';
 import {
-  ConnectModal,
   useCurrentAccount,
   useCurrentNetwork,
   useDAppKit,
 } from '@mysten/dapp-kit-react';
-import type { DAppKitConnectModal } from '@mysten/dapp-kit-core/web';
 import { useMoveBuilder } from '../hooks/useMoveBuilder';
-
+import type { DeployResultState } from '../hooks/useMoveBuilder';
 import type { Project } from '../types';
+import { WalletConnectModalTrigger } from './WalletConnectModalTrigger';
+import {
+  countHiddenFiles,
+  getInitialFilePath,
+  getVisibleFilePaths,
+} from '../utils/projectFiles';
+import {
+  FALLBACK_NETWORK,
+  getExplorerBase,
+  isSuiNetwork,
+  NETWORKS,
+  storeNetwork,
+} from '../utils/networks';
 import './Playground.css';
-
-/* ── Types ───────────────────────────────────────────── */
 
 type AnsiColorMap = Record<number, string>;
 /* eslint-disable-next-line no-control-regex */
@@ -39,105 +49,51 @@ const ANSI_COLORS: AnsiColorMap = {
   97: '#f8fafc',
 };
 
-/* ── ANSI renderer ───────────────────────────────────── */
-
-function renderAnsi(text: string, colorMap: AnsiColorMap): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  let currentColor: string | null = null;
-  let isBold = false;
-  let lastIndex = 0;
-  let key = 0;
-
-  const flush = (chunk: string) => {
-    if (!chunk) return;
-    const style: React.CSSProperties = {};
-    if (currentColor) style.color = currentColor;
-    if (isBold) style.fontWeight = 600;
-    chunk.split('\n').forEach((part, i, arr) => {
-      if (part) {
-        nodes.push(
-          <span key={`a-${key++}`} style={style}>
-            {part}
-          </span>,
-        );
-      }
-      if (i < arr.length - 1) nodes.push(<br key={`b-${key++}`} />);
-    });
-  };
-
-  for (const m of text.matchAll(ANSI_REGEX)) {
-    const idx = m.index ?? 0;
-    flush(text.slice(lastIndex, idx));
-    const codes = (m[0].slice(2, -1) || '0').split(';').map(Number);
-    for (const c of codes) {
-      if (c === 0) {
-        currentColor = null;
-        isBold = false;
-      } else if (c === 1) isBold = true;
-      else if (c === 22) isBold = false;
-      else if (c === 39) currentColor = null;
-      else if (colorMap[c]) currentColor = colorMap[c];
-    }
-    lastIndex = idx + m[0].length;
-  }
-  flush(text.slice(lastIndex));
-  return nodes;
-}
-
-/* ── Props ───────────────────────────────────────────── */
-
 interface PlaygroundProps {
   project: Project;
 }
 
-/* ── Component ─────────────────────────────────────── */
-
 export function Playground({ project }: PlaygroundProps) {
-  // File state — convert ProjectFile[] to Record<path, content>
-  const [files, setFiles] = useState<Record<string, string>>(() =>
-    Object.fromEntries(project.files.map((f) => [f.path, f.content])),
+  const [files, setFiles] = useState(project.files);
+  const [selectedPath, setSelectedPath] = useState(() =>
+    getInitialFilePath(project.files),
   );
-  const [selectedPath, setSelectedPath] = useState(() => {
-    const paths = project.files.map((f) => f.path);
-    return (
-      paths.find((p) => p.endsWith('.move')) ??
-      paths.find((p) => p === 'Move.toml') ??
-      paths[0] ??
-      ''
-    );
-  });
+  const [showLogs, setShowLogs] = useState(false);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Use custom hook for Build / Deploy logic
   const {
-    busy,
     logs,
-    buildOk,
-    compiled,
-    packageId,
-    txDigest,
+    deployResult,
+    isBuilding,
     isPublishing,
+    canDeploy,
     onBuild,
     onDeploy,
   } = useMoveBuilder(files);
 
-  const [showLogs, setShowLogs] = useState(false);
-  const logEndRef = useRef<HTMLDivElement | null>(null);
-  const connectModalRef = useRef<DAppKitConnectModal | null>(null);
   const account = useCurrentAccount();
-
-  // dApp Kit
   const dAppKit = useDAppKit();
-  const network = useCurrentNetwork();
-  const selectNetwork = (n: string) => dAppKit.switchNetwork(n as Parameters<typeof dAppKit.switchNetwork>[0]);
+  const currentNetwork = useCurrentNetwork();
+  const network = isSuiNetwork(currentNetwork)
+    ? currentNetwork
+    : FALLBACK_NETWORK;
+  const explorerBase = getExplorerBase(network);
 
-  const explorerBase =
-    network === 'mainnet'
-      ? 'https://suiscan.xyz/mainnet'
-      : network === 'devnet'
-        ? 'https://suiscan.xyz/devnet'
-        : 'https://suiscan.xyz/testnet';
+  const visiblePaths = useMemo(() => getVisibleFilePaths(files), [files]);
+  const hiddenCount = useMemo(
+    () => countHiddenFiles(files, visiblePaths),
+    [files, visiblePaths],
+  );
+  const activePath =
+    selectedPath && selectedPath in files
+      ? selectedPath
+      : getInitialFilePath(files);
 
-  /* ── CodeMirror theme (dark, matches playmove) ─────── */
+  useEffect(() => {
+    if (showLogs) {
+      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, showLogs]);
 
   const editorTheme = useMemo(
     () =>
@@ -178,133 +134,80 @@ export function Playground({ project }: PlaygroundProps) {
   const moveExt = useMemo(() => [rust(), ...baseExt], [baseExt]);
   const tomlExt = useMemo(() => [yaml(), ...baseExt], [baseExt]);
   const extensions = useMemo(() => {
-    if (selectedPath.endsWith('.move')) return moveExt;
-    if (selectedPath.endsWith('.toml')) return tomlExt;
+    if (activePath.endsWith('.move')) return moveExt;
+    if (activePath.endsWith('.toml')) return tomlExt;
     return baseExt;
-  }, [selectedPath, moveExt, tomlExt, baseExt]);
-
-  /* ── Auto-scroll logs ──────────────────────────────── */
-
-  useEffect(() => {
-    if (showLogs) {
-      logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs, showLogs]);
+  }, [activePath, moveExt, tomlExt, baseExt]);
 
   const handleBuild = () => {
     setShowLogs(true);
     onBuild();
   };
+
   const handleDeploy = () => {
     setShowLogs(true);
     onDeploy();
   };
 
-  /* ── Sorted file paths ─────────────────────────────── */
-
-  const sortedPaths = useMemo(() => {
-    const paths = Object.keys(files);
-    return paths.sort((a, b) => {
-      const aDepth = a.split('/').length;
-      const bDepth = b.split('/').length;
-      if (aDepth !== bDepth) return aDepth - bDepth;
-      return a.localeCompare(b);
-    });
-  }, [files]);
-
-  const fileTree = useMemo(() => buildFileTree(sortedPaths), [sortedPaths]);
-
-  /* ── Render ────────────────────────────────────────── */
+  const handleNetworkChange = (value: string) => {
+    if (!isSuiNetwork(value)) return;
+    dAppKit.switchNetwork(value);
+    storeNetwork(value);
+  };
 
   return (
     <div className="playground">
-      {/* Mobile: file tabs with folder path */}
-      <div className="playground__tabs">
-        {sortedPaths.map((path) => (
+      <div className="playground__tabs" aria-label="Project files">
+        {visiblePaths.map((path) => (
           <button
             key={path}
-            className={`playground__tab ${path === selectedPath ? 'playground__tab--active' : ''}`}
+            type="button"
+            className={`playground__tab ${
+              path === activePath ? 'playground__tab--active' : ''
+            }`}
             onClick={() => setSelectedPath(path)}
             title={path}
           >
             {path}
           </button>
         ))}
+        {hiddenCount > 0 && (
+          <span
+            className="playground__tab playground__tab--hidden"
+            title="Included in build"
+          >
+            +{hiddenCount} files
+          </span>
+        )}
       </div>
 
-      {/* Sidebar + editor */}
       <div className="playground__body">
-        <div className="playground__sidebar">
-          <FileTree
-            tree={fileTree}
-            selectedPath={selectedPath}
-            onSelect={setSelectedPath}
-          />
-        </div>
         <div className="playground__editor">
           <CodeMirror
-            value={files[selectedPath] ?? ''}
+            value={files[activePath] ?? ''}
             height="100%"
             extensions={extensions}
             theme={editorTheme}
             onChange={(value) =>
-              setFiles((prev) => ({ ...prev, [selectedPath]: value }))
+              setFiles((prev) => ({ ...prev, [activePath]: value }))
             }
           />
         </div>
       </div>
 
-      {/* Console — slide open/close */}
-      <div
-        className={`playground__console ${showLogs ? 'playground__console--open' : ''}`}
-      >
-        <div className="playground__console-body">
-          {logs.map((line, i) => (
-            <div key={i} className="playground__console-line">
-              {renderAnsi(line, ANSI_COLORS)}
-            </div>
-          ))}
-          <div ref={logEndRef} />
-        </div>
-        {(packageId || txDigest) && (
-          <div className="playground__deploy-info">
-            {packageId && (
-              <div className="playground__deploy-row">
-                <span className="playground__deploy-label">Package ID</span>
-                <code className="playground__deploy-value">{packageId}</code>
-                <a
-                  href={`${explorerBase}/object/${packageId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="playground__deploy-link"
-                >
-                  View ↗
-                </a>
-              </div>
-            )}
-            {txDigest && (
-              <div className="playground__deploy-row">
-                <span className="playground__deploy-label">Digest</span>
-                <code className="playground__deploy-value">{txDigest}</code>
-                <a
-                  href={`${explorerBase}/tx/${txDigest}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="playground__deploy-link"
-                >
-                  View ↗
-                </a>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <BuildConsole
+        showLogs={showLogs}
+        logs={logs}
+        deployResult={deployResult}
+        explorerBase={explorerBase}
+        logEndRef={logEndRef}
+      />
 
-      {/* Action bar */}
       <div className="playground__actions">
         <button
+          type="button"
           className="playground__btn playground__btn--toggle"
-          onClick={() => setShowLogs((v) => !v)}
+          onClick={() => setShowLogs((value) => !value)}
           title={showLogs ? 'Hide console' : 'Show console'}
         >
           <img src="/terminal.svg" alt="" className="playground__btn-icon" />
@@ -313,127 +216,180 @@ export function Playground({ project }: PlaygroundProps) {
         <select
           className="playground__network-select"
           value={network}
-          onChange={(e) => {
-            selectNetwork(e.target.value);
-            localStorage.setItem('playmove_network', e.target.value);
-          }}
-          disabled={busy}
+          onChange={(event) => handleNetworkChange(event.target.value)}
+          disabled={isBuilding || isPublishing}
         >
-          <option value="devnet">Devnet</option>
-          <option value="testnet">Testnet</option>
-          <option value="mainnet">Mainnet</option>
+          {NETWORKS.map((networkOption) => (
+            <option key={networkOption} value={networkOption}>
+              {labelNetwork(networkOption)}
+            </option>
+          ))}
         </select>
         <button
+          type="button"
           className="playground__btn playground__btn--build"
           onClick={handleBuild}
-          disabled={busy}
+          disabled={isBuilding || isPublishing}
         >
-          {busy ? '⏳ Building…' : '▶ Build'}
+          {isBuilding ? '⏳ Building…' : '▶ Build'}
         </button>
         {account ? (
           <button
+            type="button"
             className="playground__btn playground__btn--deploy"
             onClick={handleDeploy}
-            disabled={!compiled || isPublishing || buildOk !== true}
+            disabled={!canDeploy || isBuilding || isPublishing}
           >
             {isPublishing ? '⏳ Deploying…' : '🚀 Deploy'}
           </button>
         ) : (
-          <>
-            <button
-              className="playground__btn playground__btn--deploy"
-              onClick={() => connectModalRef.current?.show()}
-            >
-              Connect Wallet
-            </button>
-            {/* ConnectModal is a Lit web component; open imperatively via ref */}
-            <ConnectModal ref={connectModalRef} />
-          </>
+          <WalletConnectModalTrigger className="playground__btn playground__btn--deploy">
+            Connect Wallet
+          </WalletConnectModalTrigger>
         )}
       </div>
     </div>
   );
 }
 
-/* ── File tree helpers ───────────────────────────────── */
-
-type FileTreeNode = {
-  name: string;
-  path?: string;
-  children?: FileTreeNode[];
-};
-
-function buildFileTree(paths: string[]): FileTreeNode[] {
-  const root: FileTreeNode[] = [];
-
-  for (const fullPath of paths) {
-    const parts = fullPath.split('/');
-    let nodes = root;
-    for (let i = 0; i < parts.length; i++) {
-      const name = parts[i];
-      const isFile = i === parts.length - 1;
-      let node = nodes.find((n) => n.name === name);
-      if (!node) {
-        node = { name, ...(isFile ? { path: fullPath } : { children: [] }) };
-        nodes.push(node);
-      }
-      if (!isFile) nodes = node.children!;
-    }
-  }
-
-  const sortTree = (nodes: FileTreeNode[]) => {
-    nodes.sort((a, b) => {
-      const aFile = Boolean(a.path);
-      const bFile = Boolean(b.path);
-      if (aFile !== bFile) return aFile ? 1 : -1;
-      return a.name.localeCompare(b.name);
-    });
-    nodes.forEach((n) => n.children && sortTree(n.children));
-  };
-  sortTree(root);
-  return root;
-}
-
-function FileTree({
-  tree,
-  selectedPath,
-  onSelect,
-  depth = 0,
+function BuildConsole({
+  showLogs,
+  logs,
+  deployResult,
+  explorerBase,
+  logEndRef,
 }: {
-  tree: FileTreeNode[];
-  selectedPath: string;
-  onSelect: (path: string) => void;
-  depth?: number;
+  showLogs: boolean;
+  logs: string[];
+  deployResult: DeployResultState;
+  explorerBase: string;
+  logEndRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
-    <>
-      {tree.map((node) => {
-        const isFile = Boolean(node.path);
-        const isSelected = node.path === selectedPath;
-        return (
-          <div key={node.path ?? `dir-${node.name}-${depth}`}>
-            <div
-              className={`playground__tree-item ${isFile ? 'playground__tree-file' : 'playground__tree-folder'
-                } ${isSelected ? 'playground__tree-item--active' : ''}`}
-              style={{ paddingLeft: 12 + depth * 14 }}
-              onClick={() => node.path && onSelect(node.path)}
-            >
-              <span className="playground__tree-icon">
-                {isFile ? '📄' : '📁'}
-              </span>
-              {node.name}
-            </div>
-            {node.children && (
-              <FileTree
-                tree={node.children}
-                selectedPath={selectedPath}
-                onSelect={onSelect}
-                depth={depth + 1}
-              />
-            )}
+    <div
+      className={`playground__console ${
+        showLogs ? 'playground__console--open' : ''
+      }`}
+    >
+      <div className="playground__console-body">
+        {logs.map((line, index) => (
+          <div key={`${index}-${line}`} className="playground__console-line">
+            {renderAnsi(line, ANSI_COLORS)}
           </div>
-        );
-      })}
-    </>
+        ))}
+        <div ref={logEndRef} />
+      </div>
+      <DeployInfo deployResult={deployResult} explorerBase={explorerBase} />
+    </div>
   );
+}
+
+function DeployInfo({
+  deployResult,
+  explorerBase,
+}: {
+  deployResult: DeployResultState;
+  explorerBase: string;
+}) {
+  if (deployResult.status !== 'success' && deployResult.status !== 'failure') {
+    return null;
+  }
+
+  const digest = deployResult.digest;
+  const packageId =
+    deployResult.status === 'success' ? deployResult.packageId : undefined;
+
+  return (
+    <div className="playground__deploy-info">
+      <div className="playground__deploy-status">
+        {deployResult.status === 'success' ? '✅ Deployed' : '❌ Deploy failed'}
+      </div>
+      {packageId && (
+        <DeployInfoRow
+          label="Package ID"
+          value={packageId}
+          href={`${explorerBase}/object/${packageId}`}
+        />
+      )}
+      {digest && (
+        <DeployInfoRow
+          label="Digest"
+          value={digest}
+          href={`${explorerBase}/tx/${digest}`}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeployInfoRow({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: string;
+  href: string;
+}) {
+  return (
+    <div className="playground__deploy-row">
+      <span className="playground__deploy-label">{label}</span>
+      <code className="playground__deploy-value">{value}</code>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="playground__deploy-link"
+      >
+        View ↗
+      </a>
+    </div>
+  );
+}
+
+function renderAnsi(text: string, colorMap: AnsiColorMap): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let currentColor: string | null = null;
+  let isBold = false;
+  let lastIndex = 0;
+  let key = 0;
+
+  const flush = (chunk: string) => {
+    if (!chunk) return;
+    const style: CSSProperties = {};
+    if (currentColor) style.color = currentColor;
+    if (isBold) style.fontWeight = 600;
+    chunk.split('\n').forEach((part, index, parts) => {
+      if (part) {
+        nodes.push(
+          <span key={`a-${key++}`} style={style}>
+            {part}
+          </span>,
+        );
+      }
+      if (index < parts.length - 1) nodes.push(<br key={`b-${key++}`} />);
+    });
+  };
+
+  for (const match of text.matchAll(ANSI_REGEX)) {
+    const index = match.index ?? 0;
+    flush(text.slice(lastIndex, index));
+    const codes = (match[0].slice(2, -1) || '0').split(';').map(Number);
+    for (const code of codes) {
+      if (code === 0) {
+        currentColor = null;
+        isBold = false;
+      } else if (code === 1) isBold = true;
+      else if (code === 22) isBold = false;
+      else if (code === 39) currentColor = null;
+      else if (colorMap[code]) currentColor = colorMap[code];
+    }
+    lastIndex = index + match[0].length;
+  }
+  flush(text.slice(lastIndex));
+  return nodes;
+}
+
+function labelNetwork(network: string): string {
+  return `${network.slice(0, 1).toUpperCase()}${network.slice(1)}`;
 }

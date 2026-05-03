@@ -3,14 +3,14 @@ export type ProjectSource =
   | { type: 'template'; templateId: string }
   | { type: 'github'; url: string };
 
-/** A single file in the project */
-export interface ProjectFile {
-  path: string;
-  content: string;
-}
+/** Map of package-root-relative file path to file content. */
+export type FileMap = Record<string, string>;
 
 /** Loaded project ready for editing */
-export interface Project {
+export interface LoadedProject {
   source: ProjectSource;
-  files: ProjectFile[];
+  files: FileMap;
+  packageRoot: string;
 }
+
+export type Project = LoadedProject;

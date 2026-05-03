@@ -111,7 +111,7 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   background: transparent;
   font-size: 1rem;
   cursor: pointer;
@@ -141,7 +141,7 @@
   margin-top: 0.5rem;
   padding: 0.75rem;
   border-radius: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   background: var(--bg-primary);
 }
 
@@ -157,7 +157,7 @@
   min-width: 180px;
   padding: 0.35rem 0.5rem;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-size: 0.75rem;
@@ -172,7 +172,7 @@
 .home__token-btn {
   padding: 0.35rem 0.6rem;
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
   font-size: 0.7rem;
@@ -208,7 +208,7 @@
 .home__token-create {
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
   text-decoration: none;
   font-size: 0.65rem;
@@ -300,6 +300,11 @@
 .home__tile:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+.home__tile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .home__tile-name {

@@ -9,7 +9,9 @@
  * Trees API when repository size is manageable.
  */
 
-const GH_TOKEN_KEY = 'gh_token';
+import { getGitHubToken } from './githubToken';
+import { normalizeMovePackageFiles } from './projectFiles';
+
 const API = 'https://api.github.com';
 
 /* ── URL parsing ─────────────────────────────────────── */
@@ -19,6 +21,7 @@ interface GitHubRef {
   repo: string;
   ref: string; // branch / tag — defaults to HEAD
   path: string; // sub-path inside the repo ('' = root)
+  treeParts: string[];
 }
 
 /**
@@ -49,12 +52,13 @@ export function parseGitHubUrl(raw: string): GitHubRef {
 
   // github.com/owner/repo/tree/branch/optional/path
   if (parts[2] === 'tree' && parts.length >= 4) {
-    const ref = parts[3];
-    const path = parts.slice(4).join('/');
-    return { owner, repo, ref, path };
+    const treeParts = parts.slice(3);
+    const ref = treeParts[0] ?? '';
+    const path = treeParts.slice(1).join('/');
+    return { owner, repo, ref, path, treeParts };
   }
 
-  return { owner, repo, ref: '', path: '' };
+  return { owner, repo, ref: '', path: '', treeParts: [] };
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
@@ -67,8 +71,12 @@ function headers(token?: string): Record<string, string> {
   return h;
 }
 
-async function ghFetch<T>(url: string, token?: string): Promise<T> {
-  const res = await fetch(url, { headers: headers(token) });
+async function ghFetch<T>(
+  url: string,
+  token?: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  const res = await fetch(url, { headers: headers(token), signal });
   if (!res.ok) {
     if (res.status === 403) {
       throw new Error(
@@ -109,6 +117,10 @@ interface GHContentsItem {
   size: number;
 }
 
+interface GHRefItem {
+  ref: string;
+}
+
 /* ── Core fetcher ────────────────────────────────────── */
 
 export type FileMap = Record<string, string>;
@@ -116,6 +128,11 @@ export type FileMap = Record<string, string>;
 export interface FetchGitHubResult {
   files: FileMap;
   repoName: string;
+  packageRoot: string;
+}
+
+export interface FetchGitHubOptions {
+  signal?: AbortSignal;
 }
 
 /**
@@ -130,33 +147,66 @@ export interface FetchGitHubResult {
 export async function fetchGitHubProject(
   rawUrl: string,
   onLog?: (msg: string) => void,
+  options: FetchGitHubOptions = {},
 ): Promise<FetchGitHubResult> {
-  const token = localStorage.getItem(GH_TOKEN_KEY) ?? undefined;
+  const token = getGitHubToken();
   const log = onLog ?? (() => {});
+  const { signal } = options;
 
-  const { owner, repo, ref: refHint, path: subPath } = parseGitHubUrl(rawUrl);
+  const parsed = parseGitHubUrl(rawUrl);
+  const { owner, repo } = parsed;
   log(`📦 Repo: ${owner}/${repo}`);
-  if (subPath) log(`📁 Path: ${subPath}`);
 
   // 1. Resolve branch
-  let branch = refHint;
-  if (!branch) {
+  let branch = parsed.ref;
+  let subPath = parsed.path;
+  if (parsed.treeParts.length) {
+    const resolved = await resolveTreeRefAndPath(
+      owner,
+      repo,
+      parsed.treeParts,
+      token,
+      signal,
+    );
+    branch = resolved.ref;
+    subPath = resolved.path;
+  } else {
     log('🔍 Resolving default branch…');
     const meta = await ghFetch<{ default_branch: string }>(
       `${API}/repos/${owner}/${repo}`,
       token,
+      signal,
     );
     branch = meta.default_branch;
   }
+
+  if (subPath) log(`📁 Path: ${subPath}`);
   log(`🌿 Branch: ${branch}`);
 
   // 2. Try Trees API (recursive)
   let fileMap: FileMap;
   try {
-    fileMap = await fetchViaTree(owner, repo, branch, subPath, token, log);
-  } catch {
+    fileMap = await fetchViaTree(
+      owner,
+      repo,
+      branch,
+      subPath,
+      token,
+      log,
+      signal,
+    );
+  } catch (error) {
+    if (signal?.aborted) throw error;
     log('⚠️ Trees API failed, falling back to Contents API…');
-    fileMap = await fetchViaContents(owner, repo, branch, subPath, token, log);
+    fileMap = await fetchViaContents(
+      owner,
+      repo,
+      branch,
+      subPath,
+      token,
+      log,
+      signal,
+    );
   }
 
   const count = Object.keys(fileMap).length;
@@ -164,19 +214,15 @@ export async function fetchGitHubProject(
     throw new Error('No files found — is the path correct?');
   }
 
-  // Validate: must contain Move.toml
-  const hasMoveToml = Object.keys(fileMap).some(
-    (p) => p === 'Move.toml' || p.endsWith('/Move.toml'),
-  );
-  if (!hasMoveToml) {
-    throw new Error(
-      'Move.toml not found — this does not look like a Move package.',
-    );
-  }
+  const normalized = normalizeMovePackageFiles(fileMap);
 
-  log(`✅ Fetched ${count} files`);
+  log(`✅ Fetched ${Object.keys(normalized.files).length} package files`);
 
-  return { files: fileMap, repoName: repo };
+  return {
+    files: normalized.files,
+    repoName: repo,
+    packageRoot: normalized.packageRoot,
+  };
 }
 
 /* ── Strategy A: Git Trees (recursive, fast) ─────────── */
@@ -188,11 +234,13 @@ async function fetchViaTree(
   subPath: string,
   token: string | undefined,
   log: (msg: string) => void,
+  signal?: AbortSignal,
 ): Promise<FileMap> {
   log('⬇️  Fetching file tree…');
   const tree = await ghFetch<GHTreeResponse>(
     `${API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
     token,
+    signal,
   );
 
   if (tree.truncated) {
@@ -218,7 +266,14 @@ async function fetchViaTree(
     const batch = blobs.slice(i, i + BATCH);
     const results = await Promise.all(
       batch.map(async (blob) => {
-        const raw = await fetchRawFile(owner, repo, branch, blob.path, token);
+        const raw = await fetchRawFile(
+          owner,
+          repo,
+          branch,
+          blob.path,
+          token,
+          signal,
+        );
         const relative = prefix ? blob.path.slice(prefix.length) : blob.path;
         return { relative, raw };
       }),
@@ -240,12 +295,13 @@ async function fetchViaContents(
   subPath: string,
   token: string | undefined,
   log: (msg: string) => void,
+  signal?: AbortSignal,
 ): Promise<FileMap> {
   const fileMap: FileMap = {};
 
   async function walk(dirPath: string) {
     const url = `${API}/repos/${owner}/${repo}/contents/${dirPath}?ref=${branch}`;
-    const items = await ghFetch<GHContentsItem[]>(url, token);
+    const items = await ghFetch<GHContentsItem[]>(url, token, signal);
 
     for (const item of items) {
       if (item.type === 'dir') {
@@ -256,7 +312,14 @@ async function fetchViaContents(
         item.size < 512_000 &&
         !isBinary(item.path)
       ) {
-        const raw = await fetchRawFile(owner, repo, branch, item.path, token);
+        const raw = await fetchRawFile(
+          owner,
+          repo,
+          branch,
+          item.path,
+          token,
+          signal,
+        );
         const prefix = subPath ? subPath + '/' : '';
         const relative = prefix ? item.path.slice(prefix.length) : item.path;
         fileMap[relative] = raw;
@@ -277,15 +340,60 @@ async function fetchRawFile(
   branch: string,
   filePath: string,
   token?: string,
+  signal?: AbortSignal,
 ): Promise<string> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
   const res = await fetch(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal,
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch ${filePath}: ${res.status}`);
   }
   return res.text();
+}
+
+async function resolveTreeRefAndPath(
+  owner: string,
+  repo: string,
+  treeParts: string[],
+  token: string | undefined,
+  signal?: AbortSignal,
+): Promise<{ ref: string; path: string }> {
+  const first = treeParts[0];
+  const joined = treeParts.join('/');
+  const refs = await Promise.all([
+    fetchMatchingRefs(owner, repo, 'heads', first, token, signal),
+    fetchMatchingRefs(owner, repo, 'tags', first, token, signal),
+  ]);
+  const candidates = refs
+    .flat()
+    .map((ref) => ref.ref.replace(/^refs\/(heads|tags)\//, ''))
+    .filter((ref) => joined === ref || joined.startsWith(`${ref}/`))
+    .sort((a, b) => b.length - a.length);
+
+  const ref = candidates[0] ?? first;
+  const path = treeParts.slice(ref.split('/').length).join('/');
+  return { ref, path };
+}
+
+async function fetchMatchingRefs(
+  owner: string,
+  repo: string,
+  namespace: 'heads' | 'tags',
+  prefix: string,
+  token: string | undefined,
+  signal?: AbortSignal,
+): Promise<GHRefItem[]> {
+  try {
+    return await ghFetch<GHRefItem[]>(
+      `${API}/repos/${owner}/${repo}/git/matching-refs/${namespace}/${prefix}`,
+      token,
+      signal,
+    );
+  } catch {
+    return [];
+  }
 }
 
 /* ── Binary detection ────────────────────────────────── */

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { TEMPLATES_INTRO, TEMPLATES_MYSTEN } from '../templates';
 import type { ProjectSource } from '../types';
+import {
+  getGitHubToken,
+  GH_TOKEN_CREATE_URL,
+  setGitHubToken,
+} from '../utils/githubToken';
 import './Home.css';
-
-const GH_TOKEN_KEY = 'gh_token';
-const GH_TOKEN_CREATE_URL =
-  'https://github.com/settings/tokens/new?scopes=repo&description=PlayMove';
 
 interface HomeProps {
   onStart: (source: ProjectSource) => void;
@@ -17,23 +18,17 @@ export function Home({ onStart, loading, error }: HomeProps) {
   const [url, setUrl] = useState('');
   const [showToken, setShowToken] = useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
-  const [token, setToken] = useState(
-    () => localStorage.getItem(GH_TOKEN_KEY) ?? '',
-  );
+  const [token, setToken] = useState(() => getGitHubToken() ?? '');
 
   const handleGitHub = () => {
     const trimmed = url.trim();
-    if (!trimmed) return;
+    if (!trimmed || loading) return;
     onStart({ type: 'github', url: trimmed });
   };
 
   const handleTokenChange = (val: string) => {
     setToken(val);
-    if (val) {
-      localStorage.setItem(GH_TOKEN_KEY, val);
-    } else {
-      localStorage.removeItem(GH_TOKEN_KEY);
-    }
+    setGitHubToken(val);
   };
 
   return (
@@ -62,8 +57,10 @@ export function Home({ onStart, loading, error }: HomeProps) {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleGitHub()}
+              disabled={loading}
             />
             <button
+              type="button"
               className="home__github-btn"
               onClick={handleGitHub}
               disabled={!url.trim() || loading}
@@ -71,9 +68,11 @@ export function Home({ onStart, loading, error }: HomeProps) {
               {loading ? '⏳' : 'Go'}
             </button>
             <button
+              type="button"
               className={`home__token-toggle${showToken ? ' active' : ''}`}
               onClick={() => setShowToken(!showToken)}
               title="GitHub Token"
+              disabled={loading}
             >
               🔑
               {!showToken && token && <span className="home__token-dot" />}
@@ -90,6 +89,7 @@ export function Home({ onStart, loading, error }: HomeProps) {
                   onChange={(e) => handleTokenChange(e.target.value)}
                 />
                 <button
+                  type="button"
                   className="home__token-btn"
                   onClick={() => setTokenVisible(!tokenVisible)}
                 >
@@ -97,6 +97,7 @@ export function Home({ onStart, loading, error }: HomeProps) {
                 </button>
                 {token && (
                   <button
+                    type="button"
                     className="home__token-btn home__token-btn--clear"
                     onClick={() => handleTokenChange('')}
                   >
@@ -105,7 +106,7 @@ export function Home({ onStart, loading, error }: HomeProps) {
                 )}
               </div>
               <div className="home__token-footer">
-                <span>Stored locally in this browser only.</span>
+                <span>Stored in this tab session only.</span>
                 <a
                   href={GH_TOKEN_CREATE_URL}
                   target="_blank"
@@ -116,7 +117,8 @@ export function Home({ onStart, loading, error }: HomeProps) {
                 </a>
               </div>
               <p className="home__token-hint">
-                Optional — avoids GitHub API rate limits when importing.
+                Optional — use a fine-grained read-only token for private repos
+                or higher rate limits.
               </p>
             </div>
           )}
@@ -149,6 +151,7 @@ export function Home({ onStart, loading, error }: HomeProps) {
               key={t.id}
               className="home__tile"
               onClick={() => onStart({ type: 'template', templateId: t.id })}
+              disabled={loading}
             >
               <span className="home__tile-name">{t.label}</span>
               <span className="home__tile-desc">{t.description}</span>
@@ -182,6 +185,7 @@ export function Home({ onStart, loading, error }: HomeProps) {
               key={t.id}
               className="home__tile"
               onClick={() => onStart({ type: 'template', templateId: t.id })}
+              disabled={loading}
             >
               <span className="home__tile-name">{t.label}</span>
               <span className="home__tile-desc">{t.description}</span>
