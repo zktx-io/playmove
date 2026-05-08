@@ -38,7 +38,7 @@ Switch between the small set of surfaced files, edit code with syntax highlighti
 
 ### 3. Build & Deploy
 
-Hit **▶ Build** to compile with the WASM Move compiler. Connect your wallet and click **🚀 Deploy** to publish on-chain.
+Connect your wallet and hit **🚀 Build & Deploy**. PlayMove compiles in the browser, opens the wallet flow, and shows the package ID and digest when it lands on-chain.
 
 ![Build](public/screenshot_02.png)
 
@@ -52,7 +52,7 @@ Hit **▶ Build** to compile with the WASM Move compiler. Connect your wallet an
 
 - React + Vite + TypeScript
 - CodeMirror 6 (`@codemirror/lang-rust`, `@codemirror/lang-yaml`)
-- `@zktx.io/sui-move-builder/lite` — WASM Move compiler
+- `@zktx.io/sui-move-builder` — WASM Move compiler
 - `@mysten/dapp-kit` + `@mysten/sui` — wallet & transactions
 
 ## Getting Started

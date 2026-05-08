@@ -1,3 +1,4 @@
+import type { MovePackageGitSource } from '@zktx.io/sui-move-builder';
 import type { FileMap, LoadedProject, ProjectSource } from '../types';
 
 const MAX_VISIBLE_FILES = 5;
@@ -11,12 +12,14 @@ export function createLoadedProject(
   source: ProjectSource,
   files: FileMap,
   packageRoot = '',
+  rootGit?: MovePackageGitSource,
 ): LoadedProject {
   const normalized = normalizeMovePackageFiles(files);
   return {
     source,
     files: normalized.files,
     packageRoot: packageRoot || normalized.packageRoot,
+    ...(rootGit ? { rootGit } : {}),
   };
 }
 

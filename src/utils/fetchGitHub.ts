@@ -5,10 +5,16 @@
  *   https://github.com/owner/repo
  *   https://github.com/owner/repo/tree/branch/path/to/package
  *
- * Uses the GitHub Contents API (recursive) and falls back to the
- * Trees API when repository size is manageable.
+ * Uses the Move builder's GitHub fetcher so imported packages keep the git
+ * source metadata needed for local dependency resolution during builds.
  */
 
+import {
+  fetchMovePackageFromGitHub,
+  GitHubMovePackageFetcher,
+  type FetchedMovePackage,
+  type MovePackageGitSource,
+} from '@zktx.io/sui-move-builder';
 import { getGitHubToken } from './githubToken';
 import { normalizeMovePackageFiles } from './projectFiles';
 
@@ -91,32 +97,6 @@ async function ghFetch<T>(
   return res.json();
 }
 
-/* ── Types from GitHub API ───────────────────────────── */
-
-interface GHTreeItem {
-  path: string;
-  mode: string;
-  type: 'blob' | 'tree';
-  sha: string;
-  size?: number;
-  url: string;
-}
-
-interface GHTreeResponse {
-  sha: string;
-  url: string;
-  tree: GHTreeItem[];
-  truncated: boolean;
-}
-
-interface GHContentsItem {
-  name: string;
-  path: string;
-  type: 'file' | 'dir';
-  download_url: string | null;
-  size: number;
-}
-
 interface GHRefItem {
   ref: string;
 }
@@ -129,6 +109,7 @@ export interface FetchGitHubResult {
   files: FileMap;
   repoName: string;
   packageRoot: string;
+  rootGit: MovePackageGitSource;
 }
 
 export interface FetchGitHubOptions {
@@ -140,9 +121,8 @@ export interface FetchGitHubOptions {
  *
  * Strategy:
  * 1. Resolve the default branch if no ref is given.
- * 2. Try the Git Trees API (recursive) — fast, single request.
- *    If truncated, fall back to the Contents API (one request per dir).
- * 3. Fetch each blob's content. Skip binary files and files > 512 KB.
+ * 2. Resolve tree URLs that use branch/tag names with slashes.
+ * 3. Ask the Move builder GitHub fetcher for package files only.
  */
 export async function fetchGitHubProject(
   rawUrl: string,
@@ -183,174 +163,74 @@ export async function fetchGitHubProject(
   if (subPath) log(`📁 Path: ${subPath}`);
   log(`🌿 Branch: ${branch}`);
 
-  // 2. Try Trees API (recursive)
-  let fileMap: FileMap;
-  try {
-    fileMap = await fetchViaTree(
-      owner,
-      repo,
-      branch,
-      subPath,
-      token,
-      log,
-      signal,
-    );
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    log('⚠️ Trees API failed, falling back to Contents API…');
-    fileMap = await fetchViaContents(
-      owner,
-      repo,
-      branch,
-      subPath,
-      token,
-      log,
-      signal,
-    );
-  }
+  throwIfAborted(signal);
 
-  const count = Object.keys(fileMap).length;
+  log('⬇️  Fetching package files…');
+  const git = `https://github.com/${owner}/${repo}.git`;
+  const fetched = await fetchMovePackageInput({
+    owner,
+    repo,
+    git,
+    branch,
+    subPath,
+    token,
+  });
+
+  throwIfAborted(signal);
+
+  const count = Object.keys(fetched.files).length;
   if (count === 0) {
     throw new Error('No files found — is the path correct?');
   }
 
-  const normalized = normalizeMovePackageFiles(fileMap);
+  const normalized = normalizeMovePackageFiles(fetched.files);
+  const packageRoot = joinGitPath(subPath, normalized.packageRoot);
+  const rootGit: MovePackageGitSource = {
+    ...fetched.rootGit,
+    ...(packageRoot ? { subdir: packageRoot } : {}),
+  };
 
   log(`✅ Fetched ${Object.keys(normalized.files).length} package files`);
 
   return {
     files: normalized.files,
     repoName: repo,
-    packageRoot: normalized.packageRoot,
+    packageRoot,
+    rootGit,
   };
 }
 
-/* ── Strategy A: Git Trees (recursive, fast) ─────────── */
-
-async function fetchViaTree(
-  owner: string,
-  repo: string,
-  branch: string,
-  subPath: string,
-  token: string | undefined,
-  log: (msg: string) => void,
-  signal?: AbortSignal,
-): Promise<FileMap> {
-  log('⬇️  Fetching file tree…');
-  const tree = await ghFetch<GHTreeResponse>(
-    `${API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-    token,
-    signal,
-  );
-
-  if (tree.truncated) {
-    throw new Error('Tree truncated');
-  }
-
-  // Filter to blobs under subPath prefix
-  const prefix = subPath ? subPath + '/' : '';
-  const blobs = tree.tree.filter(
-    (item) =>
-      item.type === 'blob' &&
-      (prefix ? item.path.startsWith(prefix) : true) &&
-      (item.size ?? 0) < 512_000 &&
-      !isBinary(item.path),
-  );
-
-  log(`📄 ${blobs.length} files to download`);
-
-  // Fetch all blob contents in parallel (batched)
-  const fileMap: FileMap = {};
-  const BATCH = 10;
-  for (let i = 0; i < blobs.length; i += BATCH) {
-    const batch = blobs.slice(i, i + BATCH);
-    const results = await Promise.all(
-      batch.map(async (blob) => {
-        const raw = await fetchRawFile(
-          owner,
-          repo,
-          branch,
-          blob.path,
-          token,
-          signal,
-        );
-        const relative = prefix ? blob.path.slice(prefix.length) : blob.path;
-        return { relative, raw };
-      }),
+async function fetchMovePackageInput({
+  owner,
+  repo,
+  git,
+  branch,
+  subPath,
+  token,
+}: {
+  owner: string;
+  repo: string;
+  git: string;
+  branch: string;
+  subPath: string;
+  token: string | undefined;
+}): Promise<FetchedMovePackage> {
+  if (!branch.includes('/')) {
+    return fetchMovePackageFromGitHub(
+      `https://github.com/${owner}/${repo}/tree/${branch}${subPath ? `/${subPath}` : ''}`,
+      { githubToken: token },
     );
-    for (const { relative, raw } of results) {
-      fileMap[relative] = raw;
-    }
   }
 
-  return fileMap;
-}
-
-/* ── Strategy B: Contents API (fallback) ─────────────── */
-
-async function fetchViaContents(
-  owner: string,
-  repo: string,
-  branch: string,
-  subPath: string,
-  token: string | undefined,
-  log: (msg: string) => void,
-  signal?: AbortSignal,
-): Promise<FileMap> {
-  const fileMap: FileMap = {};
-
-  async function walk(dirPath: string) {
-    const url = `${API}/repos/${owner}/${repo}/contents/${dirPath}?ref=${branch}`;
-    const items = await ghFetch<GHContentsItem[]>(url, token, signal);
-
-    for (const item of items) {
-      if (item.type === 'dir') {
-        await walk(item.path);
-      } else if (
-        item.type === 'file' &&
-        item.download_url &&
-        item.size < 512_000 &&
-        !isBinary(item.path)
-      ) {
-        const raw = await fetchRawFile(
-          owner,
-          repo,
-          branch,
-          item.path,
-          token,
-          signal,
-        );
-        const prefix = subPath ? subPath + '/' : '';
-        const relative = prefix ? item.path.slice(prefix.length) : item.path;
-        fileMap[relative] = raw;
-      }
-    }
-  }
-
-  log('⬇️  Fetching files via Contents API…');
-  await walk(subPath);
-  return fileMap;
-}
-
-/* ── Raw file download ───────────────────────────────── */
-
-async function fetchRawFile(
-  owner: string,
-  repo: string,
-  branch: string,
-  filePath: string,
-  token?: string,
-  signal?: AbortSignal,
-): Promise<string> {
-  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
-  const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    signal,
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${filePath}: ${res.status}`);
-  }
-  return res.text();
+  const fetcher = new GitHubMovePackageFetcher(token);
+  return {
+    files: await fetcher.fetch(git, branch, subPath || undefined),
+    rootGit: {
+      git,
+      rev: branch,
+      ...(subPath ? { subdir: subPath } : {}),
+    },
+  };
 }
 
 async function resolveTreeRefAndPath(
@@ -396,35 +276,15 @@ async function fetchMatchingRefs(
   }
 }
 
-/* ── Binary detection ────────────────────────────────── */
+function joinGitPath(...parts: string[]): string {
+  return parts
+    .flatMap((part) => part.split('/'))
+    .filter(Boolean)
+    .join('/');
+}
 
-const BINARY_EXT = new Set([
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.ico',
-  '.svg',
-  '.woff',
-  '.woff2',
-  '.ttf',
-  '.otf',
-  '.eot',
-  '.mp3',
-  '.mp4',
-  '.zip',
-  '.tar',
-  '.gz',
-  '.wasm',
-  '.pdf',
-  '.exe',
-  '.dll',
-  '.so',
-  '.dylib',
-]);
-
-function isBinary(path: string): boolean {
-  const dot = path.lastIndexOf('.');
-  if (dot === -1) return false;
-  return BINARY_EXT.has(path.slice(dot).toLowerCase());
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw new DOMException('GitHub import cancelled', 'AbortError');
+  }
 }

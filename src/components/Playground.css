@@ -185,12 +185,7 @@
   cursor: not-allowed;
 }
 
-.playground__btn--build {
-  background: #2ecc71;
-  color: #fff;
-}
-
-.playground__btn--deploy {
+.playground__btn--build-deploy {
   background: var(--accent);
   color: #fff;
 }

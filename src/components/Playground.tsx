@@ -61,15 +61,11 @@ export function Playground({ project }: PlaygroundProps) {
   const [showLogs, setShowLogs] = useState(false);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
-  const {
-    logs,
-    deployResult,
-    isBuilding,
-    isPublishing,
-    canDeploy,
-    onBuild,
-    onDeploy,
-  } = useMoveBuilder(files);
+  const { logs, deployResult, isBuilding, isPublishing, onBuildAndDeploy } =
+    useMoveBuilder(files, {
+      rootGit: project.rootGit,
+      onFilesUpdated: (nextFiles) => setFiles(nextFiles),
+    });
 
   const account = useCurrentAccount();
   const dAppKit = useDAppKit();
@@ -139,14 +135,9 @@ export function Playground({ project }: PlaygroundProps) {
     return baseExt;
   }, [activePath, moveExt, tomlExt, baseExt]);
 
-  const handleBuild = () => {
+  const handleBuildAndDeploy = () => {
     setShowLogs(true);
-    onBuild();
-  };
-
-  const handleDeploy = () => {
-    setShowLogs(true);
-    onDeploy();
+    onBuildAndDeploy();
   };
 
   const handleNetworkChange = (value: string) => {
@@ -225,25 +216,17 @@ export function Playground({ project }: PlaygroundProps) {
             </option>
           ))}
         </select>
-        <button
-          type="button"
-          className="playground__btn playground__btn--build"
-          onClick={handleBuild}
-          disabled={isBuilding || isPublishing}
-        >
-          {isBuilding ? '⏳ Building…' : '▶ Build'}
-        </button>
         {account ? (
           <button
             type="button"
-            className="playground__btn playground__btn--deploy"
-            onClick={handleDeploy}
-            disabled={!canDeploy || isBuilding || isPublishing}
+            className="playground__btn playground__btn--build-deploy"
+            onClick={handleBuildAndDeploy}
+            disabled={isBuilding || isPublishing}
           >
-            {isPublishing ? '⏳ Deploying…' : '🚀 Deploy'}
+            {getBuildDeployLabel(isBuilding, isPublishing)}
           </button>
         ) : (
-          <WalletConnectModalTrigger className="playground__btn playground__btn--deploy">
+          <WalletConnectModalTrigger className="playground__btn playground__btn--build-deploy">
             Connect Wallet
           </WalletConnectModalTrigger>
         )}
@@ -392,4 +375,10 @@ function renderAnsi(text: string, colorMap: AnsiColorMap): ReactNode[] {
 
 function labelNetwork(network: string): string {
   return `${network.slice(0, 1).toUpperCase()}${network.slice(1)}`;
+}
+
+function getBuildDeployLabel(isBuilding: boolean, isPublishing: boolean) {
+  if (isBuilding) return '⏳ Building…';
+  if (isPublishing) return '⏳ Deploying…';
+  return '🚀 Build & Deploy';
 }

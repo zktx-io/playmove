@@ -12,13 +12,15 @@ import {
   getPinnedSuiMoveVersion,
   initMovePackageBuilder,
   prepareMovePackagePublish,
-  resolveMovePackageDependencies,
+  updateMovePackagePublication,
 } from '@zktx.io/sui-move-builder';
 import type {
+  MovePackageGitSource,
   MovePackageProgressEvent,
   MovePackagePublishSuccess as CompilerBuildSuccess,
 } from '@zktx.io/sui-move-builder';
 import type { FileMap } from '../types';
+import { getGitHubToken } from '../utils/githubToken';
 import { getBuildFiles } from '../utils/projectFiles';
 import {
   FALLBACK_NETWORK,
@@ -45,7 +47,15 @@ export type DeployResultState =
 
 const MAX_LOG_LINES = 300;
 
-export function useMoveBuilder(files: FileMap) {
+interface MoveBuilderOptions {
+  rootGit?: MovePackageGitSource;
+  onFilesUpdated?: (files: FileMap) => void;
+}
+
+export function useMoveBuilder(
+  files: FileMap,
+  { rootGit, onFilesUpdated }: MoveBuilderOptions = {},
+) {
   const [logs, setLogs] = useState<string[]>([]);
   const [buildResult, setBuildResult] = useState<BuildResultState>({
     status: 'idle',
@@ -103,98 +113,113 @@ export function useMoveBuilder(files: FileMap) {
     };
   }, []);
 
-  const onBuild = async () => {
+  const onBuildAndDeploy = async () => {
     addLog('── ── ── ── ──');
-    addLog('🚀 Build started');
+    addLog('🚀 Build & Deploy started');
     setBuildResult({ status: 'running' });
     setDeployResult({ status: 'idle' });
 
-    const start = performance.now();
-    try {
-      if (!compilerRef.current) {
-        compilerRef.current = initMovePackageBuilder();
-      }
-      await compilerRef.current;
-
-      addLog('📦 Resolving dependencies…');
-      const resolved = await resolveMovePackageDependencies({
-        files: buildFiles,
-        ansiColor: true,
-        network,
-      });
-
-      addLog('🔨 Compiling…');
-      const result = await prepareMovePackagePublish({
-        files: buildFiles,
-        resolvedDependencies: resolved,
-        silenceWarnings: false,
-        ansiColor: true,
-        network,
-        onProgress: (ev: MovePackageProgressEvent) => {
-          switch (ev.type) {
-            case 'resolve_dep':
-              addLog(
-                `  dep [${ev.current}/${ev.total}]: ${ev.name} (${ev.source})`,
-              );
-              break;
-            case 'resolve_complete':
-              addLog(`Dependencies resolved (${ev.count})`);
-              break;
-            case 'compile_complete':
-              addLog('Compilation complete');
-              break;
-            default:
-              break;
-          }
-        },
-      });
-
-      const elapsedSeconds = ((performance.now() - start) / 1000).toFixed(1);
-
-      if ('error' in result) {
-        addLog('❌ Build failed');
-        addLog(result.error || 'Unknown error');
-        setBuildResult({
-          status: 'failure',
-          error: result.error || 'Unknown error',
-        });
-        return;
-      }
-
-      addLog(`✅ Build succeeded in ${elapsedSeconds}s`);
-      addLog(`Digest bytes: ${result.digest.length}`);
-      addLog(
-        `🧩 Bytecode ready: ${result.modules.length} ${pluralize(
-          result.modules.length,
-          'module',
-        )}`,
-      );
-      addLog('🔎 Inspector console: bytecode dumped');
-      logBuildBytecodeToInspector(result, elapsedSeconds);
-      if (result.warnings) addLog(`⚠️ ${result.warnings}`);
-      setBuildResult({
-        status: 'success',
-        compiled: result,
-        elapsedSeconds,
-        files,
-      });
-    } catch (e) {
-      const error = formatError(e);
+    if (!account) {
+      const error = 'Connect wallet before deploying';
       addLog(`❌ ${error}`);
-      setBuildResult({ status: 'failure', error });
-    }
-  };
-
-  const onDeploy = async () => {
-    if (
-      buildResult.status !== 'success' ||
-      buildResult.files !== files ||
-      !account
-    ) {
+      setBuildResult({ status: 'idle' });
+      setDeployResult({ status: 'failure', error, files });
       return;
     }
 
-    const compiled = buildResult.compiled;
+    const compiled = await buildPublishPayload();
+    if (!compiled) return;
+
+    await publishCompiledPackage(compiled);
+  };
+
+  const buildPublishPayload =
+    async (): Promise<CompilerBuildSuccess | null> => {
+      const start = performance.now();
+      try {
+        if (!compilerRef.current) {
+          compilerRef.current = initMovePackageBuilder();
+        }
+        await compilerRef.current;
+
+        const result = await prepareMovePackagePublish({
+          files: buildFiles,
+          ...(rootGit ? { rootGit } : {}),
+          githubToken: getGitHubToken(),
+          silenceWarnings: false,
+          ansiColor: true,
+          network,
+          onProgress: (ev: MovePackageProgressEvent) => {
+            switch (ev.type) {
+              case 'resolve_start':
+                addLog('📦 Resolving dependencies…');
+                break;
+              case 'resolve_dep':
+                addLog(
+                  `  dep [${ev.current}/${ev.total}]: ${ev.name} (${ev.source})`,
+                );
+                break;
+              case 'resolve_complete':
+                addLog(`Dependencies resolved (${ev.count})`);
+                break;
+              case 'fetch_failed':
+                addLog(`⚠️ ${ev.dependencyName}: ${ev.error}`);
+                break;
+              case 'compile_start':
+                addLog('🔨 Compiling…');
+                break;
+              case 'compile_complete':
+                addLog('Compilation complete');
+                break;
+              case 'lockfile_generate':
+                addLog('📝 Writing Move.lock…');
+                break;
+              default:
+                break;
+            }
+          },
+        });
+
+        const elapsedSeconds = ((performance.now() - start) / 1000).toFixed(1);
+
+        if ('error' in result) {
+          addLog('❌ Build failed');
+          addLog(result.error || 'Unknown error');
+          setBuildResult({
+            status: 'failure',
+            error: result.error || 'Unknown error',
+          });
+          return null;
+        }
+
+        addLog(`✅ Build succeeded in ${elapsedSeconds}s`);
+        addLog(
+          `🧩 Package ready: ${result.modules.length} ${pluralize(
+            result.modules.length,
+            'module',
+          )}`,
+        );
+        if (result.warnings) addLog(`⚠️ ${result.warnings}`);
+        setBuildResult({
+          status: 'success',
+          compiled: result,
+          elapsedSeconds,
+          files,
+        });
+        return result;
+      } catch (e) {
+        const error = formatError(e);
+        addLog(`❌ ${error}`);
+        setBuildResult({ status: 'failure', error });
+        return null;
+      }
+    };
+
+  const publishCompiledPackage = async (compiled: CompilerBuildSuccess) => {
+    if (!account) {
+      return;
+    }
+
     if (!compiled.modules.length) return;
 
     setDeployResult({ status: 'publishing' });
@@ -231,7 +256,7 @@ export function useMoveBuilder(files: FileMap) {
 
       const waited = await suiClient.core.waitForTransaction({
         digest,
-        include: { transaction: true, effects: true },
+        include: { transaction: true, effects: true, objectTypes: true },
       });
       const txData = getTransactionData(waited);
 
@@ -253,11 +278,21 @@ export function useMoveBuilder(files: FileMap) {
       }
 
       addLog(`📦 Package ID: ${createdPackageId}`);
+      const deployedFiles = await updatePublicationFiles({
+        files,
+        compiled,
+        transactionResult: waited,
+        network,
+        addLog,
+        onFilesUpdated,
+        getChainIdentifier: () => suiClient.core.getChainIdentifier(),
+      });
+
       setDeployResult({
         status: 'success',
         digest,
         packageId: createdPackageId,
-        files,
+        files: deployedFiles,
       });
     } catch (e) {
       failDeploy(formatError(e));
@@ -285,17 +320,12 @@ export function useMoveBuilder(files: FileMap) {
     deployResult: freshDeployResult,
     isBuilding: freshBuildResult.status === 'running',
     isPublishing: freshDeployResult.status === 'publishing',
-    canDeploy: freshBuildResult.status === 'success',
-    onBuild,
-    onDeploy,
+    onBuildAndDeploy,
   };
 }
 
-function getTransactionData(
-  result: SuiClientTypes.TransactionResult<{
-    transaction: true;
-    effects: true;
-  }>,
+function getTransactionData<Include extends SuiClientTypes.TransactionInclude>(
+  result: SuiClientTypes.TransactionResult<Include>,
 ) {
   return result.$kind === 'Transaction'
     ? result.Transaction
@@ -311,37 +341,57 @@ function findPublishedPackageId(
   )?.objectId;
 }
 
-function logBuildBytecodeToInspector(
-  compiled: CompilerBuildSuccess,
-  elapsedSeconds: string,
-) {
-  const modules = compiled.modules.map((module, index) => ({
-    index,
-    bytes: fromBase64(module).length,
-    preview: previewBase64(module),
-    base64: module,
-  }));
-  const digestHex = `0x${compiled.digest
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')}`;
+async function updatePublicationFiles({
+  files,
+  compiled,
+  transactionResult,
+  network,
+  addLog,
+  onFilesUpdated,
+  getChainIdentifier,
+}: {
+  files: FileMap;
+  compiled: CompilerBuildSuccess;
+  transactionResult: SuiClientTypes.TransactionResult<{
+    transaction: true;
+    effects: true;
+    objectTypes: true;
+  }>;
+  network: SuiNetwork;
+  addLog: (msg: string) => void;
+  onFilesUpdated?: (files: FileMap) => void;
+  getChainIdentifier: () => Promise<{ chainIdentifier: string }>;
+}): Promise<FileMap> {
+  const filesWithLock: FileMap = {
+    ...files,
+    'Move.lock': compiled.moveLock,
+  };
+  if (compiled.publishedToml) {
+    filesWithLock['Published.toml'] = compiled.publishedToml;
+  }
 
-  console.groupCollapsed(
-    `[playmove] Bytecode ready: ${modules.length} ${pluralize(
-      modules.length,
-      'module',
-    )} in ${elapsedSeconds}s`,
-  );
-  console.table(
-    modules.map(({ index, bytes, preview }) => ({ index, bytes, preview })),
-  );
-  console.log('modulesBase64', compiled.modules);
-  console.log('dependencies', compiled.dependencies);
-  console.log('digestHex', digestHex);
-  console.groupEnd();
-}
+  try {
+    const { chainIdentifier } = await getChainIdentifier();
+    const updated = await updateMovePackagePublication({
+      files: filesWithLock,
+      prepared: compiled,
+      result: transactionResult,
+      network,
+      chainId: chainIdentifier,
+    });
 
-function previewBase64(value: string): string {
-  return value.length > 48 ? `${value.slice(0, 48)}...` : value;
+    if ('error' in updated) {
+      addLog(`⚠️ Publication files not updated: ${updated.error}`);
+      return files;
+    }
+
+    onFilesUpdated?.(updated.files);
+    addLog('📝 Publication files updated');
+    return updated.files;
+  } catch (error) {
+    addLog(`⚠️ Publication files not updated: ${formatError(error)}`);
+    return files;
+  }
 }
 
 function pluralize(count: number, label: string): string {

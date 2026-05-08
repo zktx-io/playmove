@@ -1,3 +1,5 @@
+import type { MovePackageGitSource } from '@zktx.io/sui-move-builder';
+
 /** How the user chose to start a project */
 export type ProjectSource =
   | { type: 'template'; templateId: string }
@@ -11,6 +13,7 @@ export interface LoadedProject {
   source: ProjectSource;
   files: FileMap;
   packageRoot: string;
+  rootGit?: MovePackageGitSource;
 }
 
 export type Project = LoadedProject;

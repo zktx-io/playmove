@@ -50,7 +50,7 @@ If a feature is requested that pushes toward IDE territory, propose a lighter al
 ## UX rules (“toy vibe” guidelines)
 
 - Prefer **big playful buttons** over toolbars
-  - Example: “▶ Build” and “🚀 Deploy”
+  - Example: “🚀 Build & Deploy”
 - Prefer **cards** over panes
 - Prefer **2–5 files** surfaced as tabs/chips rather than a full file tree
 - Logs should read like a “result board”
@@ -66,7 +66,7 @@ If a feature is requested that pushes toward IDE territory, propose a lighter al
 
 - React + Vite (Docusaurus integration where applicable)
 - Code editor: CodeMirror
-- Move build: `@zktx.io/sui-move-builder/lite` (WASM)
+- Move build: `@zktx.io/sui-move-builder` (WASM lite entry)
 - Sui interaction: `@mysten/dapp-kit`, `@mysten/sui` Transaction
 - Only support the **latest Move 2024 syntax** and latest official Sui SDK
 
@@ -102,7 +102,7 @@ When you implement a change:
 Ask yourself:
 - Does this make playmove feel like VS Code? If yes, **reject**
 - Can we ship the same value with fewer UI elements?
-- Does this improve “Build → Deploy → Play” flow?
+- Does this improve “Build & Deploy → Play” flow?
 - Is the result understandable in 3 seconds on a demo?
 
 ---
@@ -111,8 +111,8 @@ Ask yourself:
 
 - Templates + clean single-screen playground
 - GitHub import (simple, one package)
-- Build logs + result badge
-- Deploy + show packageId/digest + link out
+- Build/deploy logs + result badge
+- Show packageId/digest + link out
 - Optional: verify/repro build (only if it stays “toy-like”)
 
 ---
@@ -124,8 +124,8 @@ Ask yourself:
 2. **Playground screen** — single-screen editor + actions
    - File tabs/chips at top (2–5 files, no file tree)
    - CodeMirror editor for light editing
-   - Action bar at bottom: `← Back`, `▶ Build`, `🚀 Deploy`
+   - Action bar at bottom: `← Back`, `🚀 Build & Deploy`
    - Result card with badge (✅/❌) + collapsible details
-   - Build result shows logs; Deploy result shows packageId, digest, explorer link
+   - Build/deploy result shows logs, packageId, digest, explorer link
 
 ---

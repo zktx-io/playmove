@@ -33,13 +33,13 @@ function App() {
     abortRef.current = controller;
     setLoading(true);
     try {
-      const { files, packageRoot } = await fetchGitHubProject(
+      const { files, packageRoot, rootGit } = await fetchGitHubProject(
         source.url,
         undefined,
         { signal: controller.signal },
       );
       if (requestIdRef.current !== requestId) return;
-      setProject(createLoadedProject(source, files, packageRoot));
+      setProject(createLoadedProject(source, files, packageRoot, rootGit));
     } catch (err) {
       if (controller.signal.aborted || requestIdRef.current !== requestId)
         return;
